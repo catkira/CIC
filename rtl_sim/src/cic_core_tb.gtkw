@@ -1,0 +1,32 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Mon Aug 19 14:58:47 2019
+[*]
+[dumpfile] "/home/ibragimove/My_Designs/Hydra_SoC/trunk/Hydra_SoC_AFE5808_to_MSGDMA_8_as_1/CIC_core/trunk/sim/cic_d_tb.vcd"
+[dumpfile_mtime] "Mon Aug 19 14:49:53 2019"
+[dumpfile_size] 8766018
+[savefile] "/home/ibragimove/My_Designs/Hydra_SoC/trunk/Hydra_SoC_AFE5808_to_MSGDMA_8_as_1/CIC_core/trunk/sim/cic_core_tb.gtkw"
+[timestart] 0
+[size] 1020 597
+[pos] 61 31
+*-18.000000 127000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] cic_d_tb.
+[sst_width] 223
+[signals_width] 271
+[sst_expanded] 1
+[sst_vpaned_height] 151
+@28
+cic_d_tb.clk
+@8420
+cic_d_tb.filter_inp_data[17:0]
+cic_d_tb.filter_out[17:0]
+@28
+cic_d_tb.filter_out_str
+@8420
+cic_d_tb.filter_out_ref[17:0]
+@28
+cic_d_tb.phase_curr
+cic_d_tb.samp_duty_rdy
+cic_d_tb.phase_step
+[pattern_trace] 1
+[pattern_trace] 0
