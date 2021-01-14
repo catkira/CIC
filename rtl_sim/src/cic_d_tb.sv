@@ -70,17 +70,17 @@ localparam B_2Np1 = B_max - SAMP_OUT_DW + 1;
 
 localparam delta_f_offs = 200;  /// clock number to start delta-function in simulation
 /*************************************************************/
-reg                                                                     clk;                                    ///< clock
-reg                                                                     reset_n;                                ///< reset, active 0
+reg                                     clk;                                    ///< clock
+reg                                     reset_n;                                ///< reset, active 0
 wire    signed  [SAMP_INP_DW-1:0]       filter_inp_data;                ///< input test data of filter
-reg             signed  [SAMP_INP_DW-1:0]       filter_inp_data_d[0:2]; ///< delayed filter_inp_data, for reference model
-wire                                            filter_out_str;                 ///< filter output sample ready strobe
-reg                                                                     filter_out_str_d;               ///< filter_out_str delayed
+reg     signed  [SAMP_INP_DW-1:0]       filter_inp_data_d[0:2]; ///< delayed filter_inp_data, for reference model
+wire                                    filter_out_str;                 ///< filter output sample ready strobe
+reg                                     filter_out_str_d;               ///< filter_out_str delayed
 wire    signed  [SAMP_OUT_DW-1:0]       filter_out;                             ///< filter output data
-reg             signed  [SAMP_OUT_DW-1:0]       filter_out_reg;                 ///< 
+reg     signed  [SAMP_OUT_DW-1:0]       filter_out_reg;                 ///< 
 wire    signed  [SAMP_OUT_DW-1:0]       filter_out_ref_wire;    ///< reference filter output data
 reg     signed  [SAMP_OUT_DW-1:0]       filter_out_ref;                 ///< 
-reg             signed  [SAMP_OUT_DW-1:0]       filter_out_diff;                ///< subtracting tested filter output and reference filter output 
+reg     signed  [SAMP_OUT_DW-1:0]       filter_out_diff;                ///< subtracting tested filter output and reference filter output 
 integer clk_counter;    ///< counter of clock periods
 integer samp_counter;   ///< counter of input samples
 real phase_curr;                ///< phase of input signal
@@ -176,12 +176,12 @@ initial begin : reset_gen
     log2_h_f0_pre = clog2_l(h_f0_pre);
     $display(" log2_h_f0_pre = %2d, lim %2d", log2_h_f0_pre, h_f0_pre_limit_prec);
     if (log2_h_f0_pre > h_f0_pre_limit_prec) begin
-            h_f0_pre_divider = log2_h_f0_pre - h_f0_pre_limit_prec;
-            $display(" h_f0_pre_divider = %2d", h_f0_pre_divider);
-            h_f0_pre = h_f0_pre >> h_f0_pre_divider;
-            h_f0_divider_exp = h_f0_divider_exp - h_f0_pre_divider;
-            $display(" log2_h_f0_pre limited = %2d, divider_exp limited %2d", log2_h_f0_pre, h_f0_divider_exp);
-            h_f0 = 1.0 * h_f0_pre / 2**(h_f0_divider_exp);
+        h_f0_pre_divider = log2_h_f0_pre - h_f0_pre_limit_prec;
+        $display(" h_f0_pre_divider = %2d", h_f0_pre_divider);
+        h_f0_pre = h_f0_pre >> h_f0_pre_divider;
+        h_f0_divider_exp = h_f0_divider_exp - h_f0_pre_divider;
+        $display(" log2_h_f0_pre limited = %2d, divider_exp limited %2d", log2_h_f0_pre, h_f0_divider_exp);
+        h_f0 = 1.0 * h_f0_pre / 2**(h_f0_divider_exp);
     end
     else begin
             h_f0 = h_f0_pre / 2**(B_2Np1 + 1);
