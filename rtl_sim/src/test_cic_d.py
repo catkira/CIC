@@ -104,12 +104,12 @@ async def simple_test_(dut):
 tests_dir = os.path.abspath(os.path.dirname(__file__))
 rtl_dir = os.path.abspath(os.path.join(tests_dir, '..', '..', 'rtl', 'verilog'))
 
-@pytest.mark.parametrize("R", [100])
+@pytest.mark.parametrize("R", [10, 100])
 @pytest.mark.parametrize("M", [1])
-@pytest.mark.parametrize("N", [7])
+@pytest.mark.parametrize("N", [4, 7])
 @pytest.mark.parametrize("INP_DW", [17])
-@pytest.mark.parametrize("OUT_DW", [14])
-@pytest.mark.parametrize("SMALL_FOOTPRINT", [0])
+@pytest.mark.parametrize("OUT_DW", [14, 17])
+@pytest.mark.parametrize("SMALL_FOOTPRINT", [0, 1])
 def test_cic_d(request, R, N, M, INP_DW, OUT_DW, SMALL_FOOTPRINT):
     dut = "cic_d"
     module = os.path.splitext(os.path.basename(__file__))[0]
