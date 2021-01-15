@@ -12,7 +12,7 @@ To run the unit tests install
 and run pytest in the repo directory
 
 
-# Licence
+# License
 for old code from opencores LGPL
 
 for new code GPL
