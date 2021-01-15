@@ -14,13 +14,11 @@ and run pytest in the repo directory
 
 # Licence
 for old code from opencores LGPL
+
 for new code GPL
 
 
-Original README.md is below:
-
-CIC filter
-==============================
+# Old README.md
 
 It is the CIC filter with Hogenauer pruning.
 This project is based on https://opencores.org/projects/cic_core project.
