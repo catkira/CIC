@@ -48,7 +48,7 @@ class TB(object):
         freq = 10000
         phase_step = CLK_PERIOD_NS * 2 * freq * math.pi * 0.000000001
         self.input = []
-        delay = np.zeros(20)
+        delay = np.zeros(30)
         while True:
             await RisingEdge(self.dut.clk)
             phase += phase_step
@@ -57,7 +57,7 @@ class TB(object):
                 delay[i+1] = delay[i]
             delay[0] = value
             self.input.append(value)
-            self.model.push_data(delay[11])  # TODO: figure out this magic value
+            self.model.push_data(delay[4 + self.N])  # TODO: figure out this magic value
             self.dut.inp_samp_data <= value
             self.dut.inp_samp_str <= 1
 
