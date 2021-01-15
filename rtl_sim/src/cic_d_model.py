@@ -57,10 +57,7 @@ class Model:
         for i_s in np.arange(self.N-1,0,-1):
             self.cic_taps[self.cic_push_ptr + i_s * self.R*self.M] = self.cic_model_stage_get_out(i_s - 1)
         self.cic_taps[self.cic_push_ptr] = data_in
-        if self.cic_push_ptr < self.R*self.M - 1:
-            self.cic_push_ptr += 1
-        else:    
-            self.cic_push_ptr = 0
+        self.cic_push_ptr = self.cic_push_ptr + 1 if self.cic_push_ptr < self.R*self.M - 1 else 0
 
     def get_data(self):
         cic_B_scale_out = self.Num_Output_Bits_With_No_Truncation + 1 - self.OUT_DW
