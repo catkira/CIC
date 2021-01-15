@@ -1,3 +1,5 @@
+# CIC Filter with Python testbenches
+
 This project is based on https://opencores.org/projects/cic_core_2
 
 The main addition is a python model and unit tests in python using cocotb
@@ -8,6 +10,11 @@ To run the unit tests install
 - pip3 install cocotb, cocotb_test, pytest,
 
 and run pytest in the repo directory
+
+
+# Licence
+for old code from opencores LGPL
+for new code GPL
 
 
 Original README.md is below:
@@ -23,7 +30,7 @@ Differences are listed below:
 * project is rewritten in Verilog and simulated with Icarus;
 * incorrect widths of registers of integrators and combs are fixed;
 
-# Getting sarted
+Getting sarted
 
 * /rtl/verilog/cic\_d.sv - CIC filter decimator
 * /rtl/verilog/cic\_functions.vh - functions for calculation parameters of CIC filter
@@ -35,12 +42,12 @@ Differences are listed below:
 * /sim/rtl\_sim/run/cic\_d\_tb.gtkw - list of signals to watch with GTKWave
 * /sim/rtl\_sim/src/cic\_d\_tb.sv - testbench for CIC filter decimator
 
-# Prerequisities
+Prerequisities
 
 Icarus Verilog is used for simulation 
 GTKWave is used for watching the results of simulation
 
-# Running the tests
+Running the tests
 
 To see simulation results run
 /sim/rtl\_sim/bin/cic\_d\_run\_sim.sh
@@ -48,10 +55,10 @@ To see simulation results run
 open output .vcd file with GTKWave
 load list of signals to watch from cic\_d_tb.gtkw
 
-# Authors
+Authors
 
 Egor Ibragimov
 
-# Licence
+Licence
 
 LGPL
