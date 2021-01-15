@@ -16,7 +16,7 @@ import numpy as np
 
 import importlib.util
 
-CLK_PERIOD_NS = 100
+CLK_PERIOD_NS = 8
 
 class TB(object):
     def __init__(self,dut):
@@ -49,14 +49,18 @@ class TB(object):
         samples_period_val = 6
         phase_step = CLK_PERIOD_NS * samples_period_val * 2 * freq * math.pi * 0.000000001
         self.input = []
+        delay = np.zeros(20)
         while True:
             await RisingEdge(self.dut.clk)
             phase += phase_step
             value = int(np.round(math.sin(phase)*(2**(self.INP_DW-1)-1)))
+            for i in np.arange(delay.shape[0]-2,-1,-1):
+                delay[i+1] = delay[i]
+            delay[0] = value
             self.input.append(value)
+            self.model.push_data(delay[11])  # TODO: figure out this magic value
             self.dut.inp_samp_data <= value
             self.dut.inp_samp_str <= 1
-
 
     async def cycle_reset(self):
         self.dut.reset_n.setimmediatevalue(1)
@@ -76,14 +80,20 @@ async def simple_test_(dut):
     await tb.cycle_reset()
     cocotb.fork(tb.generate_input())
     output = []
-    for _ in range(1000):
+    output_model = []
+    tolerance = 1
+    for _ in range(5000):
         await RisingEdge(dut.clk)
         if dut.out_samp_str == 1:
-            output.append(dut.out_samp_data)
+            a=dut.out_samp_data.value.integer
+            if (a & (1 << (tb.OUT_DW - 1))) != 0:
+                a = a - (1 << tb.OUT_DW)
+            output.append(a)
+            output_model.append(tb.model.get_data())
+            assert np.abs(a - output_model[-1]) <= tolerance, f"hdl: {a} \t model: {output_model[-1]}"
     tb.dut.inp_samp_str <= 0
     await RisingEdge(dut.clk)
     print(f"received {len(output)} samples")
-    assert False
     
 # cocotb-test
 
@@ -92,8 +102,8 @@ tests_dir = os.path.abspath(os.path.dirname(__file__))
 rtl_dir = os.path.abspath(os.path.join(tests_dir, '..', '..', 'rtl', 'verilog'))
 
 @pytest.mark.parametrize("R", [100])
-@pytest.mark.parametrize("N", [7])
 @pytest.mark.parametrize("M", [1])
+@pytest.mark.parametrize("N", [7])
 @pytest.mark.parametrize("INP_DW", [17])
 @pytest.mark.parametrize("OUT_DW", [14])
 @pytest.mark.parametrize("SMALL_FOOTPRINT", [1])
@@ -116,8 +126,8 @@ def test_cic_d(request, R, N, M, INP_DW, OUT_DW, SMALL_FOOTPRINT):
     parameters = {}
 
     parameters['CIC_R'] = R
-    parameters['CIC_N'] = N
     parameters['CIC_M'] = M
+    parameters['CIC_N'] = N
     parameters['INP_DW'] = INP_DW
     parameters['OUT_DW'] = OUT_DW
     parameters['SMALL_FOOTPRINT'] = SMALL_FOOTPRINT
