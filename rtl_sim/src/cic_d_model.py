@@ -14,9 +14,10 @@ class Model:
         self.register_pruning = register_pruning
 
         # calculate register pruning as described in Hogenauer, 1981
-        RMpN = (R*M)**N
-        B_max = math.ceil(math.log2(RMpN)) + INP_DW - 1
-        print(f"B_max: {B_max}")
+        CIC_Filter_Gain = (R*M)**N        
+        Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
+        Num_Output_Bits_With_No_Truncation = Num_of_Bits_Growth + INP_DW - 1
+        print(f"B_max: {Num_Output_Bits_With_No_Truncation}")
 
         F_j = np.zeros(1000)
         for j in np.arange(2*N,0,-1):
@@ -27,23 +28,17 @@ class Model:
                         h_j[k] += (-1)**L*self.binom(N, L)*self.binom(N - j + k - R*M*L, k - R*M*L)
             else:
                 for k in np.arange(2*N + 1 - j + 1):
-                    print(2*N + 1 - j)
-                    print(k)
                     h_j[k] = (-1)**k*self.binom(2*N + 1 - j, k)
 
             F_j[j] = np.sqrt(np.dot(h_j,h_j))
 
         F_j[2*N + 1]=1
 
-        CIC_Filter_Gain = (R*M)**N
-        Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
-        Num_Output_Bits_With_No_Truncation = Num_of_Bits_Growth + INP_DW
-        Num_of_Output_Bits_Truncated = Num_Output_Bits_With_No_Truncation - OUT_DW
+        Num_of_Output_Bits_Truncated = Num_Output_Bits_With_No_Truncation - OUT_DW + 1
         sigma = np.sqrt((2**Num_of_Output_Bits_Truncated)**2/12)
 
         Minus_log2_of_F_j = -np.log2(F_j)
         B_j = np.floor(Minus_log2_of_F_j + np.log2(sigma) + 0.5*math.log2(6/N));        
-
 
         for j in np.arange(1, 2*N+1):
             print(f"F_{j} = {F_j[j]}  \t -log_2(F_j) = {Minus_log2_of_F_j[j]} \t B_j = {B_j[j]} \t bits = {Num_Output_Bits_With_No_Truncation - B_j[j]}")
