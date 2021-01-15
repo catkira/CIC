@@ -1,5 +1,16 @@
-This is a backup copy of a project from OpenCores
-https://opencores.org/projects/cic_core_2
+This project is based on https://opencores.org/projects/cic_core_2
+
+The main addition is a python model and unit tests in python using cocotb
+
+To run the unit tests install
+- python 3.8
+- iverilog 1.4
+- pip3 install cocotb, cocotb_test, pytest,
+
+and run pytest in the repo directory
+
+
+Original README.md is below:
 
 CIC filter
 ==============================
