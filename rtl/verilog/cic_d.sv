@@ -1,3 +1,5 @@
+`timescale 1ns / 1ns
+
 module cic_d
 /*********************************************************************************************/
 #(
@@ -201,28 +203,16 @@ endtask
 
 generate
     initial begin : initial_print_parameters
-    if (1) begin 
-            print_parameters_nice;
-    end
-    
-    end
-    if (0) begin
-        for (j = 0; j < CIC_N; j = j + 1) begin : print_int_stage
-            initial begin
-                $display("CIC integrator j:%2d B %2d B_ jm1 %2d odw_prev %2d in_dw %3d out_dw %3d data_width_pass %3d", j + 1, int_stage[j].B_j, int_stage[j].B_jm1, int_stage[j].odw_prev, int_stage[j].idw_cur, int_stage[j].odw_cur, 0);
-            end
-        end
-        initial begin
-                $display("CIC downsampler     B %2d                                  ds_dw %3d", B_m, ds_dw);
-        end
-        for (j = 0; j < CIC_N; j = j + 1) begin : print_comb_stage
-            initial begin
-                $display("CIC comb       j:%2d B %2d B_mjm1 %2d             in_dw %3d out_dw %3d", j, comb_stage[j].B_m_j, comb_stage[j].B_m_j_m1, comb_stage[j].idw_cur, comb_stage[j].odw_cur);
-            end
-        end
-        initial begin
-            $display("CIC out odw %3d", OUT_DW);
-        end
+        print_parameters_nice;
     end
 endgenerate
+
+`ifdef COCOTB_SIM
+initial begin
+  $dumpfile ("cic_d.vcd");
+  $dumpvars (0, cic_d);
+  #1;
+end
+`endif
+
 endmodule

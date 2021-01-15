@@ -11,6 +11,8 @@ import os
 import logging
 import cocotb_test.simulator
 import pytest
+import math
+import numpy as np
 
 import importlib.util
 
@@ -20,26 +22,43 @@ class TB(object):
     def __init__(self,dut):
         random.seed(30) # reproducible tests
         self.dut = dut
-        self.R = dut.CIC_R
-        self.M = dut.CIC_M
-        self.N = dut.CIC_N
-        self.INP_DW = dut.INP_DW
-        self.OUT_DW = dut.OUT_DW
-        self.SMALL_FOOTPRINT = dut.SMALL_FOOTPRINT
+        self.R = int(dut.CIC_R)
+        self.M = int(dut.CIC_M)
+        self.N = int(dut.CIC_N)
+        self.INP_DW = int(dut.INP_DW)
+        self.OUT_DW = int(dut.OUT_DW)
+        self.SMALL_FOOTPRINT = int(dut.SMALL_FOOTPRINT)
 
         self.log = logging.getLogger("cocotb.tb")
         self.log.setLevel(logging.DEBUG)        
-        
+
+        self.input = []
+
         tests_dir = os.path.abspath(os.path.dirname(__file__))
         model_dir = os.path.abspath(os.path.join(tests_dir, 'cic_d_model.py'))
         spec = importlib.util.spec_from_file_location("cic_d_model", model_dir)
         foo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(foo)
         self.model = foo.Model(self.R, self.M, self.N, self.INP_DW, self.OUT_DW) 
+        cocotb.fork(Clock(self.dut.clk, CLK_PERIOD_NS, units='ns').start())
         
-        cocotb.fork(Clock(dut.clk, CLK_PERIOD_NS, units='ns').start())
-        
-        
+
+    async def generate_input(self):
+        phase = 0
+        freq = 10000
+        samples_period_val = 6
+        phase_step = CLK_PERIOD_NS * samples_period_val * 2 * freq * math.pi * 0.000000001
+        self.input = []
+        while True:
+            print(phase)
+            await RisingEdge(self.dut.clk)
+            phase += phase_step
+            value = int(np.round(math.sin(phase)*(2**(self.INP_DW-1)-1)))
+            self.input.append(value)
+            self.dut.inp_samp_data <= value
+            self.dut.inp_samp_str <= 1
+
+
     async def cycle_reset(self):
         self.dut.reset_n.setimmediatevalue(1)
         await RisingEdge(self.dut.clk)
@@ -56,12 +75,12 @@ async def simple_test_(dut):
     tb = TB(dut)
     tb.dut.clear <= 0
     await tb.cycle_reset()
-    for i in range(10):
+    cocotb.fork(tb.generate_input())
+    for _ in range(1000):
         await RisingEdge(dut.clk)
-        tb.dut.inp_samp_str <= 1
-        tb.dut.inp_samp_data <= i
     tb.dut.inp_samp_str <= 0
     await RisingEdge(dut.clk)
+    assert False
     
 # cocotb-test
 
