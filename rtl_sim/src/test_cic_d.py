@@ -48,7 +48,7 @@ class TB(object):
         freq = 10000
         phase_step = CLK_PERIOD_NS * 2 * freq * math.pi * 0.000000001
         self.input = []
-        delay = np.zeros(30)
+        delay = np.zeros(1000)
         while True:
             await RisingEdge(self.dut.clk)
             phase += phase_step
@@ -57,7 +57,10 @@ class TB(object):
                 delay[i+1] = delay[i]
             delay[0] = value
             self.input.append(value)
-            self.model.push_data(delay[4 + self.N])  # TODO: figure out this magic value
+            if self.SMALL_FOOTPRINT == 1:
+                self.model.push_data(delay[4 + self.N])  # TODO: figure out this magic value
+            else:
+                self.model.push_data(delay[5 + (self.N-1)*self.R])  # TODO: figure out this magic value
             self.dut.inp_samp_data <= value
             self.dut.inp_samp_str <= 1
 
@@ -89,6 +92,7 @@ async def simple_test_(dut):
                 a = a - (1 << tb.OUT_DW)
             output.append(a)
             output_model.append(tb.model.get_data())
+            # print(f"hdl: {a} \t model: {output_model[-1]}")
             assert np.abs(a - output_model[-1]) <= tolerance, f"hdl: {a} \t model: {output_model[-1]}"
     tb.dut.inp_samp_str <= 0
     await RisingEdge(dut.clk)
@@ -105,7 +109,7 @@ rtl_dir = os.path.abspath(os.path.join(tests_dir, '..', '..', 'rtl', 'verilog'))
 @pytest.mark.parametrize("N", [7])
 @pytest.mark.parametrize("INP_DW", [17])
 @pytest.mark.parametrize("OUT_DW", [14])
-@pytest.mark.parametrize("SMALL_FOOTPRINT", [1])
+@pytest.mark.parametrize("SMALL_FOOTPRINT", [0])
 def test_cic_d(request, R, N, M, INP_DW, OUT_DW, SMALL_FOOTPRINT):
     dut = "cic_d"
     module = os.path.splitext(os.path.basename(__file__))[0]
