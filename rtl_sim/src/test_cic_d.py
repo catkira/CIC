@@ -50,7 +50,6 @@ class TB(object):
         phase_step = CLK_PERIOD_NS * samples_period_val * 2 * freq * math.pi * 0.000000001
         self.input = []
         while True:
-            print(phase)
             await RisingEdge(self.dut.clk)
             phase += phase_step
             value = int(np.round(math.sin(phase)*(2**(self.INP_DW-1)-1)))
@@ -76,10 +75,14 @@ async def simple_test_(dut):
     tb.dut.clear <= 0
     await tb.cycle_reset()
     cocotb.fork(tb.generate_input())
+    output = []
     for _ in range(1000):
         await RisingEdge(dut.clk)
+        if dut.out_samp_str == 1:
+            output.append(dut.out_samp_data)
     tb.dut.inp_samp_str <= 0
     await RisingEdge(dut.clk)
+    print(f"received {len(output)} samples")
     assert False
     
 # cocotb-test
@@ -89,11 +92,11 @@ tests_dir = os.path.abspath(os.path.dirname(__file__))
 rtl_dir = os.path.abspath(os.path.join(tests_dir, '..', '..', 'rtl', 'verilog'))
 
 @pytest.mark.parametrize("R", [100])
-@pytest.mark.parametrize("N", [10])
+@pytest.mark.parametrize("N", [7])
 @pytest.mark.parametrize("M", [1])
-@pytest.mark.parametrize("INP_DW", [16])
-@pytest.mark.parametrize("OUT_DW", [16])
-@pytest.mark.parametrize("SMALL_FOOTPRINT", [0])
+@pytest.mark.parametrize("INP_DW", [17])
+@pytest.mark.parametrize("OUT_DW", [14])
+@pytest.mark.parametrize("SMALL_FOOTPRINT", [1])
 def test_cic_d(request, R, N, M, INP_DW, OUT_DW, SMALL_FOOTPRINT):
     dut = "cic_d"
     module = os.path.splitext(os.path.basename(__file__))[0]

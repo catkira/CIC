@@ -87,9 +87,9 @@ generate
     wire summ_rdy_str;
     if (SMALL_FOOTPRINT != 0) begin ///< generate comb for small footprint
         always @(negedge reset_n or posedge clk)        ///< shift register for strobe from datasampler, used to latch data from comb at N'th clock after downsamplers strobe
-            if              (~reset_n)      comb_inp_str_d <= '0;
+            if (~reset_n)           comb_inp_str_d <= '0;
             else if (clear)         comb_inp_str_d <= '0;
-            else                            comb_inp_str_d <= {comb_inp_str_d[CIC_N - 1 : 0], ds_out_samp_str};
+            else                    comb_inp_str_d <= {comb_inp_str_d[CIC_N - 1 : 0], ds_out_samp_str};
     end
     
     if (SMALL_FOOTPRINT == 0)       assign summ_rdy_str = '0;
@@ -124,11 +124,11 @@ generate
                 .samp_out_data  (comb_inst_out)
                 );
         if (SMALL_FOOTPRINT == 0)       assign comb_chain_out_str = comb_stage[CIC_N - 1].comb_dv;
-        else                                            assign comb_chain_out_str = comb_inp_str_d[CIC_N - 1];
+        else                            assign comb_chain_out_str = comb_inp_str_d[CIC_N - 1];
         initial begin
-                //$display("i:%d  comb idw=%2d odw=%2d  B(%2d, %3d, %2d, %2d, %2d, %2d)=%2d", j, idw_cur, odw_cur, CIC_N + j + 1, CIC_R, CIC_M, CIC_N, INP_DW, OUT_DW, B_m_j);
-                //if (j != 0) $display("odw_prev=%2d, comb_stage[j - 1].odw_cur=%2d", odw_prev, comb_stage[j - 1].odw_cur);
-                $display("i:%d  comb idw=%d", j, idw_cur);
+            //$display("i:%d  comb idw=%2d odw=%2d  B(%2d, %3d, %2d, %2d, %2d, %2d)=%2d", j, idw_cur, odw_cur, CIC_N + j + 1, CIC_R, CIC_M, CIC_N, INP_DW, OUT_DW, B_m_j);
+            //if (j != 0) $display("odw_prev=%2d, comb_stage[j - 1].odw_cur=%2d", odw_prev, comb_stage[j - 1].odw_cur);
+            $display("i:%d  comb idw=%d", j, idw_cur);
         end
     end
 endgenerate
@@ -139,12 +139,12 @@ reg                                     comb_out_samp_str_reg;
 
 always @(negedge reset_n or posedge clk)
 begin
-    if              (~reset_n)              comb_out_samp_data_reg <= '0;
+    if      (~reset_n)                      comb_out_samp_data_reg <= '0;
     else if (comb_chain_out_str)            comb_out_samp_data_reg <= comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW];
 end
 
 always @(negedge reset_n or posedge clk)
-    if              (~reset_n)              comb_out_samp_str_reg <= '0;
+    if      (~reset_n)                      comb_out_samp_str_reg <= '0;
     else if (clear)                         comb_out_samp_str_reg <= '0;
     else                                    comb_out_samp_str_reg <= comb_chain_out_str;
 
