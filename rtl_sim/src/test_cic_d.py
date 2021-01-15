@@ -46,8 +46,7 @@ class TB(object):
     async def generate_input(self):
         phase = 0
         freq = 10000
-        samples_period_val = 6
-        phase_step = CLK_PERIOD_NS * samples_period_val * 2 * freq * math.pi * 0.000000001
+        phase_step = CLK_PERIOD_NS * 2 * freq * math.pi * 0.000000001
         self.input = []
         delay = np.zeros(20)
         while True:
