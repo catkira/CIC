@@ -22,9 +22,9 @@ class Model:
         self.Num_Output_Bits_With_No_Truncation = Num_of_Bits_Growth + INP_DW - 1
         print(f"B_max: {self.Num_Output_Bits_With_No_Truncation}")
 
-        F_j = np.zeros(1000)
+        F_j = np.zeros(2*N + 2)
         for j in np.arange(2*N,0,-1):
-            h_j = np.zeros(1000)
+            h_j = np.zeros((R*M-1)*N + 2*N)
             if j <= N:
                 for k in np.arange((R*M-1)*N + j - 1):
                     for L in range(int(np.floor(k/(R*M))) + 1):
