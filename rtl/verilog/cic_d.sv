@@ -33,7 +33,7 @@ generate
         localparam idw_cur = B_max - B_jm1 + 1;         ///< data width on the input
         localparam odw_cur = B_max - B_j   + 1;         ///< data width on the output
         wire signed [idw_cur - 1 : 0] int_in;           ///< input data bus
-        if ( i == 0 )   assign int_in = inp_samp_data;                          ///< if it is the first stage, then takes data from input of CIC filter
+        if ( i == 0 )   assign int_in = inp_samp_data;                  ///< if it is the first stage, then takes data from input of CIC filter
         else            assign int_in = int_stage[i - 1].int_out;       ///< otherwise, takes data from the previous stage of the filter
         wire signed [odw_cur - 1 : 0] int_out;
         integrator #(
@@ -49,15 +49,15 @@ generate
             .out_samp_data  (int_out)
             );
         initial begin
-                //$display("i:%d integ idw=%2d odw=%2d  B(%2d, %3d, %2d, %2d, %2d, %2d)=%2d, Bj-1=%2d, F_sq=%8d", i, idw_cur, odw_cur, i + 1, CIC_R, CIC_M, CIC_N, INP_DW, OUT_DW, B_j, B_jm1, F_sq_j);
-                $display("i:%d integ idw=%d ", i, idw_cur);
+            //$display("i:%d integ idw=%2d odw=%2d  B(%2d, %3d, %2d, %2d, %2d, %2d)=%2d, Bj-1=%2d, F_sq=%8d", i, idw_cur, odw_cur, i + 1, CIC_R, CIC_M, CIC_N, INP_DW, OUT_DW, B_j, B_jm1, F_sq_j);
+            $display("i:%d integ idw=%d ", i, idw_cur);
         end
     end
 endgenerate
 /*********************************************************************************************/
 /// downsampler takes data from m-th stage
 localparam B_m = B_calc(CIC_N, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);    ///< bits to prune on the m-th stage
-localparam ds_dw = B_max - B_m + 1;                                                                             ///< data width of the downsampler
+localparam ds_dw = B_max - B_m + 1;                                     ///< data width of the downsampler
 wire    signed [ds_dw - 1 : 0]  ds_out_samp_data;
 wire                                                    ds_out_samp_str;
 /*********************************************************************************************/

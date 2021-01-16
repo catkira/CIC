@@ -16,25 +16,24 @@ module comb
 #(
     parameter       SAMP_WIDTH = 8,
     parameter       CIC_M = 1,
-    //parameter     CIC_N = 1,
     parameter       SMALL_FOOTPRINT = 0     ///< set to 1 for less registers usage, but for every sample CIC_N clocks required
 )
 /*********************************************************************************************/
 (
-    input                                                                                   clk,
-    input                                                                                   reset_n,
-    input                                                                                   clear,
+    input                                                   clk,
+    input                                                   reset_n,
+    input                                                   clear,
     input   wire    signed  [SAMP_WIDTH - 1:0]              samp_inp_data,
-    input                                                                                   samp_inp_str,
-    input                                                                                   summ_rdy_str,   ///< for SMALL_FOOTPRINT set 1 after CIC_N cycles from inp_str to load FIFO registers with new sample
-                                                                                                                                    ///< output data must be latched before summ_rdy_str is set, read output data at CIC_N - 1 clock after inp_str
+    input                                                   samp_inp_str,
+    input                                                   summ_rdy_str,   ///< for SMALL_FOOTPRINT set 1 after CIC_N cycles from inp_str to load FIFO registers with new sample
+                                                                            ///< output data must be latched before summ_rdy_str is set, read output data at CIC_N - 1 clock after inp_str
     output  wire    signed  [SAMP_WIDTH - 1:0]              samp_out_data,
-    output  wire                                                                    samp_out_str
+    output  wire                                            samp_out_str
 );
 /*********************************************************************************************/
 integer i;
 reg             signed  [SAMP_WIDTH - 1 : 0]    data_reg[CIC_M - 1 : 0];        ///< the storage for the FIFO register
-wire                                                                    data_reg_push_str;      ///< strobe to push data into data_reg FIFO
+wire                                            data_reg_push_str;              ///< strobe to push data into data_reg FIFO
 /*********************************************************************************************/
 
 
