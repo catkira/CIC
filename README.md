@@ -11,6 +11,10 @@ To run the unit tests install
 
 and run pytest in the repo directory
 
+# SMALL_FOOTPRINT Option
+
+if SMALL_FOOTPRINT is 1, the outputs of the comb stages are buffered with a register. This additional pipelining isolates the adder of the comb from the following logic and therefore allows higher clock speeds. The drawback is a higher latency.
+
 
 # License
 for old code from opencores LGPL
