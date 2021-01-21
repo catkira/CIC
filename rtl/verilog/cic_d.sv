@@ -81,24 +81,24 @@ downsampler #(
     );
 /*********************************************************************************************/
 genvar  j;
-wire comb_chain_out_str;
+wire                    comb_chain_out_str;
 reg     [CIC_N : 0]     comb_inp_str_d;
 generate
     wire summ_rdy_str;
-    if (SMALL_FOOTPRINT != 0) begin ///< generate comb for small footprint
-        always @(negedge reset_n or posedge clk)        ///< shift register for strobe from datasampler, used to latch data from comb at N'th clock after downsamplers strobe
+    if (SMALL_FOOTPRINT != 0) begin                     //  generate a N clock cycles delayed inp_str 
+        always @(negedge reset_n or posedge clk)        //  that will become summ_rdy_str of the comb_stages
             if (~reset_n)           comb_inp_str_d <= '0;
             else if (clear)         comb_inp_str_d <= '0;
             else                    comb_inp_str_d <= {comb_inp_str_d[CIC_N - 1 : 0], ds_out_samp_str};
     end
     
     if (SMALL_FOOTPRINT == 0)       assign summ_rdy_str = '0;
-    else                            assign summ_rdy_str = comb_inp_str_d[CIC_N];
-            
+    else                            assign summ_rdy_str = comb_inp_str_d[CIC_N];    // ds_out_samp_str delayed by N cycles
+                                                                                    // this gives 1 clock cycle for every comb stage
 
     for (j = 0; j < CIC_N; j = j + 1) begin : comb_stage
-        localparam B_m_j_m1             =    B_calc(CIC_N + j    ,      CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);
-        localparam B_m_j                =    B_calc(CIC_N + j + 1,      CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);
+        localparam B_m_j_m1             =    B_calc(CIC_N + j    , CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);
+        localparam B_m_j                =    B_calc(CIC_N + j + 1, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);
         localparam idw_cur = B_max - B_m_j_m1 + 1;
         localparam odw_cur = B_max - B_m_j + 1;
         wire signed [idw_cur - 1 : 0] comb_in;
@@ -106,25 +106,25 @@ generate
         wire signed [odw_cur - 1 : 0] comb_out;
         wire comb_dv;
         if (j == 0)     assign comb_in = ds_out_samp_data;
-                else    assign comb_in = comb_stage[j - 1].comb_out;
+        else            assign comb_in = comb_stage[j - 1].comb_out;
         assign comb_out = comb_inst_out[idw_cur - 1 -: odw_cur];
         comb #(
-                .SAMP_WIDTH             (idw_cur),
-                .CIC_M                  (CIC_M),
+                .SAMP_WIDTH     (idw_cur),
+                .CIC_M          (CIC_M),
                 .SMALL_FOOTPRINT(SMALL_FOOTPRINT)
             )
             comb_inst(
-                .clk                    (clk),
-                .reset_n                (reset_n),
-                .clear                  (clear),
-                .samp_inp_str   (ds_out_samp_str),
+                .clk            (clk),
+                .reset_n        (reset_n),
+                .clear          (clear),
+                .samp_inp_str   (ds_out_samp_str),      // not used if SMALL_FOOTPRINT == 1
                 .samp_inp_data  (comb_in),
-                .summ_rdy_str   (summ_rdy_str),
-                .samp_out_str   (comb_dv),
+                .summ_rdy_str   (summ_rdy_str),         // not used if SMALL_FOOTPRINT == 0, all stages latch at the same time, timing is most critical for last stage
+                .samp_out_str   (comb_dv),              // not used if SMALL_FOOTPRINT == 1
                 .samp_out_data  (comb_inst_out)
                 );
-        if (SMALL_FOOTPRINT == 0)       assign comb_chain_out_str = comb_stage[CIC_N - 1].comb_dv;
-        else                            assign comb_chain_out_str = comb_inp_str_d[CIC_N - 1];
+        if (SMALL_FOOTPRINT == 0)       assign comb_chain_out_str = comb_stage[CIC_N - 1].comb_dv;  // use buffered inp_str 
+        else                            assign comb_chain_out_str = comb_inp_str_d[CIC_N - 1];      // use unbuffered inp_str
         initial begin
             //$display("i:%d  comb idw=%2d odw=%2d  B(%2d, %3d, %2d, %2d, %2d, %2d)=%2d", j, idw_cur, odw_cur, CIC_N + j + 1, CIC_R, CIC_M, CIC_N, INP_DW, OUT_DW, B_m_j);
             //if (j != 0) $display("odw_prev=%2d, comb_stage[j - 1].odw_cur=%2d", odw_prev, comb_stage[j - 1].odw_cur);
@@ -149,7 +149,7 @@ always @(negedge reset_n or posedge clk)
     else                                    comb_out_samp_str_reg <= comb_chain_out_str;
 
 assign out_samp_data    = comb_out_samp_data_reg;
-assign out_samp_str             = comb_out_samp_str_reg;
+assign out_samp_str     = comb_out_samp_str_reg;
 /*********************************************************************************************/
 task print_parameters_nice;
     integer tot_registers;
