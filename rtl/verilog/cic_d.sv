@@ -3,18 +3,18 @@
 module cic_d
 /*********************************************************************************************/
 #(
-    parameter INP_DW = 18,                  ///< input data width
-    parameter OUT_DW = 18,                  ///< output data width
-    parameter CIC_R = 100,                  ///< decimation ratio
-    parameter CIC_N = 7,                    ///< number of stages
-    parameter CIC_M = 1,                    ///< delay in comb
+    parameter INP_DW = 18,          ///< input data width
+    parameter OUT_DW = 18,          ///< output data width
+    parameter CIC_R = 100,          ///< decimation ratio
+    parameter CIC_N = 7,            ///< number of stages
+    parameter CIC_M = 1,            ///< delay in comb
     parameter SMALL_FOOTPRINT = 1   ///< reduced registers usage, f_clk / (f_samp/CIC_R)  > CIC_N required
 )
 /*********************************************************************************************/
 (
-    input                                   clk,                    ///< input clock
-    input                                   reset_n,                ///< input reset
-    input                                   clear,                  ///< input clear integrator, set accumulator to 0
+    input                                   clk,            ///< input clock
+    input                                   reset_n,        ///< input reset
+    input                                   clear,          ///< input clear integrator, set accumulator to 0
     input   wire    signed [INP_DW-1:0]     inp_samp_data,  ///< input data
     input                                   inp_samp_str,   ///< input data ready strobe
     output  wire    signed [OUT_DW-1:0]     out_samp_data,  ///< output data
