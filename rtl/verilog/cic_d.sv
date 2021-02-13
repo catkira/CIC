@@ -5,10 +5,11 @@ module cic_d
 #(
     parameter INP_DW = 18,          ///< input data width
     parameter OUT_DW = 18,          ///< output data width
-    parameter CIC_R = 100,          ///< decimation ratio
+    parameter CIC_R = 10,           ///< decimation ratio
     parameter CIC_N = 7,            ///< number of stages
     parameter CIC_M = 1,            ///< delay in comb
-    parameter SMALL_FOOTPRINT = 1   ///< reduced registers usage, f_clk / (f_samp/CIC_R)  > CIC_N required
+    parameter SMALL_FOOTPRINT = 1,   ///< reduced registers usage, f_clk / (f_samp/CIC_R)  > CIC_N required  
+    parameter [32*(CIC_N*2+2)-1:0] STAGE_WIDTH = {(CIC_N*2+2){32'd0}}   // stage width can be given as a parameter to speed up synthesis
 )
 /*********************************************************************************************/
 (
@@ -24,11 +25,22 @@ module cic_d
 /*********************************************************************************************/
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
 /*********************************************************************************************/
+
+function integer get_prune_bits(input byte i);
+    if (STAGE_WIDTH[32*(CIC_N*2+2)-1:0] == 0) begin
+        return B_calc(i, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);
+    end
+    else begin
+        //#$display("stage=%d return %d calculated %d", i, STAGE_WIDTH[32*i +:32], B_calc(i, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW));
+        return STAGE_WIDTH[32*i +:32];
+    end
+endfunction
+
 genvar  i;
 generate
     for (i = 0; i < CIC_N; i = i + 1) begin : int_stage
-        localparam B_jm1        = B_calc(i    , CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);   ///< the number of bits to prune in previous stage
-        localparam B_j          = B_calc(i + 1, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);   ///< the number of bits to prune in current stage
+        localparam B_jm1 = get_prune_bits(i);   ///< the number of bits to prune in previous stage
+        localparam B_j   = get_prune_bits(i+1); ///< the number of bits to prune in current stage
         localparam idw_cur = B_max - B_jm1 + 1;         ///< data width on the input
         localparam odw_cur = B_max - B_j   + 1;         ///< data width on the output
         wire signed [idw_cur - 1 : 0] int_in;           ///< input data bus
@@ -54,8 +66,8 @@ generate
 endgenerate
 /*********************************************************************************************/
 /// downsampler takes data from m-th stage
-localparam B_m = B_calc(CIC_N, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);    ///< bits to prune on the m-th stage
-localparam ds_dw = B_max - B_m + 1;                                     ///< data width of the downsampler
+localparam B_m = get_prune_bits(CIC_N);    ///< bits to prune on the m-th stage
+localparam ds_dw = B_max - B_m + 1;   ///< data width of the downsampler
 wire    signed [ds_dw - 1 : 0]  ds_out_samp_data;
 wire                                                    ds_out_samp_str;
 /*********************************************************************************************/
@@ -93,8 +105,8 @@ generate
                                                                                     // this gives 1 clock cycle for every comb stage
 
     for (j = 0; j < CIC_N; j = j + 1) begin : comb_stage
-        localparam B_m_j_m1             =    B_calc(CIC_N + j    , CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);
-        localparam B_m_j                =    B_calc(CIC_N + j + 1, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);
+        localparam B_m_j_m1             =    get_prune_bits(CIC_N + j);
+        localparam B_m_j                =    get_prune_bits(CIC_N + j + 1);
         localparam idw_cur = B_max - B_m_j_m1 + 1;
         localparam odw_cur = B_max - B_m_j + 1;
         wire signed [idw_cur - 1 : 0] comb_in;
@@ -150,6 +162,7 @@ always @(negedge reset_n or posedge clk)
 assign out_samp_data    = comb_out_samp_data_reg;
 assign out_samp_str     = comb_out_samp_str_reg;
 /*********************************************************************************************/
+
 task print_parameters_nice;
     integer tot_registers;
     integer j;
@@ -192,13 +205,12 @@ task print_parameters_nice;
     tot_registers = 0;
     for (j = 1; j < 2 * CIC_N + 2; j = j + 1) begin : check_Bj
         F_sq_curr = F_sq_calc(j, CIC_N, CIC_R, CIC_M);
-        B_j = B_calc(j, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);
+        B_j = get_prune_bits(j);
         dw_j = B_max - B_j + 1;
         tot_registers = tot_registers + dw_j;
     end
     $display("CIC total registers %2d", tot_registers);
 endtask
-
 
 generate
     initial begin : initial_print_parameters

@@ -20,6 +20,7 @@ class Model:
         CIC_Filter_Gain = (self.R*self.M)**self.N        
         Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
         self.Num_Output_Bits_With_No_Truncation = Num_of_Bits_Growth + self.INP_DW - 1
+        self.Num_of_Output_Bits_Truncated = 0
         
         self.extra_delay = 0    # extra delay before downsampler
         self.extra_delay_2 = 0  # extra delay after downsampler
@@ -57,14 +58,14 @@ class Model:
 
         F_j[2*self.N + 1]=1
 
-        Num_of_Output_Bits_Truncated = self.Num_Output_Bits_With_No_Truncation - self.OUT_DW + 1
-        sigma = np.sqrt((2**Num_of_Output_Bits_Truncated)**2/12)
+        self.Num_of_Output_Bits_Truncated = self.Num_Output_Bits_With_No_Truncation - self.OUT_DW + 1
+        sigma = np.sqrt((2**self.Num_of_Output_Bits_Truncated)**2/12)
 
         self.B_j = np.floor(-np.log2(F_j) + np.log2(sigma) + 0.5*math.log2(6/self.N));        
 
         for j in np.arange(1, 2*self.N+1):
-            print(f"F_{j} = {F_j[j]}  \t -log_2(F_j) = {-np.log2(F_j[j])} \t B_j = {self.B_j[j]} \t bits = {self.Num_Output_Bits_With_No_Truncation - self.B_j[j]}")
-        print(f"F_{2*self.N+1} = {F_j[2*self.N+1]}  \t\t\t -log_2(F_j) = {-np.log2(F_j[2*self.N+1])} \t B_j = {Num_of_Output_Bits_Truncated} \t bits = {self.OUT_DW}")
+            print(f"F_{j} = {F_j[j]}  \t -log_2(F_j) = {-np.log2(F_j[j])} \t B_j = {self.B_j[j]} \t bits = {self.Num_Output_Bits_With_No_Truncation - self.B_j[j]}")            
+        print(f"F_{2*self.N+1} = {F_j[2*self.N+1]}  \t\t\t -log_2(F_j) = {-np.log2(F_j[2*self.N+1])} \t B_j = {self.Num_of_Output_Bits_Truncated} \t bits = {self.OUT_DW}")
 
     def cic_model_stage_get_out(self, stage):
         ret = 0
