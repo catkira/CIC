@@ -10,7 +10,6 @@ module downsampler
 (
     input                   clk,
     input                   reset_n,
-    input                   clear,
     input   wire    signed  [DATA_WIDTH_INP - 1:0]  inp_samp_data,
     input                   inp_samp_str,
     output  reg     signed  [DATA_WIDTH_INP - 1:0]  out_samp_data,
@@ -24,7 +23,6 @@ reg [DECIM_COUNTER_WIDTH - 1 : 0] counter;
 always @(posedge clk or negedge reset_n)
 begin
     if (!reset_n)           counter <= '0;
-    else if (clear)         counter <= '0;
     else if (inp_samp_str)  counter <= (counter < CIC_R - 1) ? counter + {{(DECIM_COUNTER_WIDTH - 1){1'b0}}, 1'b1} : '0;
 end
 /*********************************************************************************************/
@@ -32,7 +30,6 @@ end
 always @(posedge clk or negedge reset_n)
 begin
     if (!reset_n)           out_samp_data <= '0;
-    else if (clear)         out_samp_data <= '0;
     else if (inp_samp_str)  out_samp_data <= (counter < CIC_R - 1) ? out_samp_data : inp_samp_data;
 end
 /*********************************************************************************************/
@@ -40,7 +37,6 @@ end
 always @(posedge clk or negedge reset_n)
 begin
     if (!reset_n)           out_samp_str <= 1'b0;
-    else if (clear)         out_samp_str <= 1'b0;
     else if (inp_samp_str)  out_samp_str <= (counter == CIC_R - 1);
     else                    out_samp_str <= 1'b0;
 end

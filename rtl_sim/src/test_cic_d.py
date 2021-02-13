@@ -39,7 +39,7 @@ class TB(object):
         spec = importlib.util.spec_from_file_location("cic_d_model", model_dir)
         foo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(foo)
-        self.model = foo.Model(self.R, self.M, self.N, self.INP_DW, self.OUT_DW) 
+        self.model = foo.Model(self.R, self.M, self.N, self.INP_DW, self.OUT_DW, self.SMALL_FOOTPRINT) 
         cocotb.fork(Clock(self.dut.clk, CLK_PERIOD_NS, units='ns').start())
         
 
@@ -53,14 +53,9 @@ class TB(object):
             await RisingEdge(self.dut.clk)
             phase += phase_step
             value = int(np.round(math.sin(phase)*(2**(self.INP_DW-1)-1)))
-            for i in np.arange(delay.shape[0]-2,-1,-1):
-                delay[i+1] = delay[i]
-            delay[0] = value
             self.input.append(value)
-            if self.SMALL_FOOTPRINT == 1:
-                self.model.push_data(delay[4 + self.N])  # TODO: figure out this magic value
-            else:
-                self.model.push_data(delay[5 + (self.N-1)*self.R])  # TODO: figure out this magic value
+            self.model.set_data(value) 
+            self.model.tick()
             self.dut.inp_samp_data <= value
             self.dut.inp_samp_str <= 1
 
@@ -78,7 +73,6 @@ class TB(object):
 @cocotb.test()
 async def simple_test(dut):
     tb = TB(dut)
-    tb.dut.clear <= 0
     await tb.cycle_reset()
     cocotb.fork(tb.generate_input())
     output = []
@@ -86,14 +80,18 @@ async def simple_test(dut):
     tolerance = 1
     for _ in range(5000):
         await RisingEdge(dut.clk)
+        if(tb.model.data_valid()):
+            output_model.append(tb.model.get_data())
+            # print(f"model: {output_model[-1]}")
+
         if dut.out_samp_str == 1:
             a=dut.out_samp_data.value.integer
             if (a & (1 << (tb.OUT_DW - 1))) != 0:
                 a = a - (1 << tb.OUT_DW)
             output.append(a)
-            output_model.append(tb.model.get_data())
-            # print(f"hdl: {a} \t model: {output_model[-1]}")
+            # print(f"hdl: {a}")
             assert np.abs(a - output_model[-1]) <= tolerance, f"hdl: {a} \t model: {output_model[-1]}"
+        # print(f"{tb.model.data_valid()} {dut.out_samp_str}")
     tb.dut.inp_samp_str <= 0
     await RisingEdge(dut.clk)
     print(f"received {len(output)} samples")

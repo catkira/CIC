@@ -14,7 +14,6 @@ module cic_d
 (
     input                                   clk,            ///< input clock
     input                                   reset_n,        ///< input reset
-    input                                   clear,          ///< input clear integrator, set accumulator to 0
     input   wire    signed [INP_DW-1:0]     inp_samp_data,  ///< input data
     input                                   inp_samp_str,   ///< input data ready strobe
     output  wire    signed [OUT_DW-1:0]     out_samp_data,  ///< output data
@@ -43,7 +42,6 @@ generate
             int_inst(
             .clk                    (clk),
             .reset_n                (reset_n),
-            .clear                  (clear) ,
             .inp_samp_data  (int_in),
             .inp_samp_str   (inp_samp_str),
             .out_samp_data  (int_out)
@@ -73,7 +71,6 @@ downsampler #(
     (
         .clk                    (clk),
         .reset_n                (reset_n),
-        .clear                  (clear),
         .inp_samp_data  (int_stage[CIC_N - 1].int_out),
         .inp_samp_str   (inp_samp_str),
         .out_samp_data  (ds_out_samp_data),
@@ -88,11 +85,10 @@ generate
     if (SMALL_FOOTPRINT != 0) begin                     //  generate a N clock cycles delayed inp_str 
         always @(negedge reset_n or posedge clk)        //  that will become summ_rdy_str of the comb_stages
             if (~reset_n)           comb_inp_str_d <= '0;
-            else if (clear)         comb_inp_str_d <= '0;
             else                    comb_inp_str_d <= {comb_inp_str_d[CIC_N - 1 : 0], ds_out_samp_str};
     end
     
-    if (SMALL_FOOTPRINT == 0)       assign summ_rdy_str = '0;
+    if (SMALL_FOOTPRINT == 0)       assign summ_rdy_str = '0;                       // wire is not used
     else                            assign summ_rdy_str = comb_inp_str_d[CIC_N];    // ds_out_samp_str delayed by N cycles
                                                                                     // this gives 1 clock cycle for every comb stage
 
@@ -104,10 +100,14 @@ generate
         wire signed [idw_cur - 1 : 0] comb_in;
         wire signed [idw_cur - 1 : 0] comb_inst_out;
         wire signed [odw_cur - 1 : 0] comb_out;
-        wire comb_dv;
         if (j == 0)     assign comb_in = ds_out_samp_data;
         else            assign comb_in = comb_stage[j - 1].comb_out;
         assign comb_out = comb_inst_out[idw_cur - 1 -: odw_cur];
+        
+        wire                          comb_in_str;
+        if (j == 0)     assign comb_in_str = ds_out_samp_str;
+        else            assign comb_in_str = comb_stage[j - 1].comb_dv;
+        
         comb #(
                 .SAMP_WIDTH     (idw_cur),
                 .CIC_M          (CIC_M),
@@ -116,13 +116,13 @@ generate
             comb_inst(
                 .clk            (clk),
                 .reset_n        (reset_n),
-                .clear          (clear),
-                .samp_inp_str   (ds_out_samp_str),      // not used if SMALL_FOOTPRINT == 1
+                .samp_inp_str   (comb_in_str),          // not used if SMALL_FOOTPRINT == 1
                 .samp_inp_data  (comb_in),
                 .summ_rdy_str   (summ_rdy_str),         // not used if SMALL_FOOTPRINT == 0, all stages latch at the same time, timing is most critical for last stage
                 .samp_out_str   (comb_dv),              // not used if SMALL_FOOTPRINT == 1
                 .samp_out_data  (comb_inst_out)
                 );
+        wire comb_dv;
         if (SMALL_FOOTPRINT == 0)       assign comb_chain_out_str = comb_stage[CIC_N - 1].comb_dv;  // use buffered inp_str 
         else                            assign comb_chain_out_str = comb_inp_str_d[CIC_N - 1];      // use unbuffered inp_str
         initial begin
@@ -145,7 +145,6 @@ end
 
 always @(negedge reset_n or posedge clk)
     if      (~reset_n)                      comb_out_samp_str_reg <= '0;
-    else if (clear)                         comb_out_samp_str_reg <= '0;
     else                                    comb_out_samp_str_reg <= comb_chain_out_str;
 
 assign out_samp_data    = comb_out_samp_data_reg;
