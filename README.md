@@ -16,6 +16,10 @@ To run the unit tests install
 
 and run pytest in the repo directory
 
+# TODO
+- write test with variable rate
+- make interpolating CIC up to date
+
 # License
 for old code from opencores LGPL
 
