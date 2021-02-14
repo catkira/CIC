@@ -3,11 +3,11 @@
 module cic_d
 /*********************************************************************************************/
 #(
-    parameter INP_DW = 18,          ///< input data width
-    parameter OUT_DW = 18,          ///< output data width
-    parameter CIC_R = 10,           ///< decimation ratio
-    parameter CIC_N = 7,            ///< number of stages
-    parameter CIC_M = 1,            ///< delay in comb
+    parameter INP_DW = 18,          // input data width
+    parameter OUT_DW = 18,          // output data width
+    parameter CIC_R = 10,           // decimation ratio, if VARIABLE_RATE = 1, R has to be set to the maximum decimation ratio
+    parameter CIC_N = 7,            // number of stages
+    parameter CIC_M = 1,            // delay in comb
     parameter [32*(CIC_N*2+2)-1:0] PRUNE_BITS = {(CIC_N*2+2){32'd0}},   // stage width can be given as a parameter to speed up synthesis
     parameter VARIABLE_RATE = 1
 )
