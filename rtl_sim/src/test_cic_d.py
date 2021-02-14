@@ -23,8 +23,8 @@ class TB(object):
         random.seed(30) # reproducible tests
         self.dut = dut
         self.R = int(dut.CIC_R)
-        self.M = int(dut.CIC_M)
         self.N = int(dut.CIC_N)
+        self.M = int(dut.CIC_M)
         self.INP_DW = int(dut.INP_DW)
         self.OUT_DW = int(dut.OUT_DW)
         self.SMALL_FOOTPRINT = int(dut.SMALL_FOOTPRINT)
@@ -39,7 +39,7 @@ class TB(object):
         spec = importlib.util.spec_from_file_location("cic_d_model", model_dir)
         foo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(foo)
-        self.model = foo.Model(self.R, self.M, self.N, self.INP_DW, self.OUT_DW, self.SMALL_FOOTPRINT) 
+        self.model = foo.Model(self.R, self.N, self.M, self.INP_DW, self.OUT_DW, self.SMALL_FOOTPRINT) 
         cocotb.fork(Clock(self.dut.clk, CLK_PERIOD_NS, units='ns').start())
         
 
@@ -102,13 +102,13 @@ async def simple_test(dut):
 tests_dir = os.path.abspath(os.path.dirname(__file__))
 rtl_dir = os.path.abspath(os.path.join(tests_dir, '..', '..', 'rtl', 'verilog'))
 
-def calculate_prune_bits(R, M, N, INP_DW, OUT_DW):
+def calculate_prune_bits(R, N, M, INP_DW, OUT_DW):
     tests_dir = os.path.abspath(os.path.dirname(__file__))
     model_dir = os.path.abspath(os.path.join(tests_dir, 'cic_d_model.py'))
     spec = importlib.util.spec_from_file_location("cic_d_model", model_dir)
     foo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(foo)
-    model = foo.Model(R, M, N, INP_DW, OUT_DW, 0) 
+    model = foo.Model(R, N, M, INP_DW, OUT_DW, 0) 
     B_j = model.calculate_register_pruning(R, N, M, INP_DW, OUT_DW)
     
     ret = 0;
@@ -149,7 +149,7 @@ def test_cic_d_fast(request, R, N, M, INP_DW, OUT_DW, SMALL_FOOTPRINT, PRECALCUL
     parameters['OUT_DW'] = OUT_DW
     parameters['SMALL_FOOTPRINT'] = SMALL_FOOTPRINT
     if PRECALCULATE_PRUNE_BITS:
-        parameters['STAGE_WIDTH'] = calculate_prune_bits(R,M,N,INP_DW,OUT_DW)
+        parameters['STAGE_WIDTH'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
 
     extra_env = {f'PARAM_{k}': str(v) for k, v in parameters.items()}
     sim_build="sim_build/" + "_".join(("{}={}".format(*i) for i in parameters.items()))

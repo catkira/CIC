@@ -5,7 +5,7 @@ import math
 import numpy as np
 
 class Model:
-    def __init__(self, R, M, N , INP_DW, OUT_DW, SMALL_FOOTPRINT, register_pruning=1):
+    def __init__(self, R, N ,M, INP_DW, OUT_DW, SMALL_FOOTPRINT, register_pruning=1):
         self.R = R
         self.M = M
         self.N = N
