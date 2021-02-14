@@ -109,12 +109,12 @@ def calculate_prune_bits(R, M, N, INP_DW, OUT_DW):
     foo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(foo)
     model = foo.Model(R, M, N, INP_DW, OUT_DW, 0) 
+    B_j = model.calculate_register_pruning(R, N, M, INP_DW, OUT_DW)
     
     ret = 0;
-    for i in range(2*N):
-        print(model.B_j[i+1])
-        ret += int(model.B_j[i+1])<<(32*(i+1))
-    ret += int(model.Num_of_Output_Bits_Truncated)<<(32*(2*N+1))
+    for i in range(2*N+1):
+        print(f"B_j[{i}] = {B_j[i+1]}")
+        ret += int(B_j[i+1])<<(32*(i+1))
     return ret
 
 @pytest.mark.parametrize("R", [10, 100])
@@ -123,7 +123,8 @@ def calculate_prune_bits(R, M, N, INP_DW, OUT_DW):
 @pytest.mark.parametrize("INP_DW", [17])
 @pytest.mark.parametrize("OUT_DW", [14, 17])
 @pytest.mark.parametrize("SMALL_FOOTPRINT", [1, 0])
-def test_cic_d_fast(request, R, N, M, INP_DW, OUT_DW, SMALL_FOOTPRINT):
+@pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [1, 0])
+def test_cic_d_fast(request, R, N, M, INP_DW, OUT_DW, SMALL_FOOTPRINT, PRECALCULATE_PRUNE_BITS):
     dut = "cic_d"
     module = os.path.splitext(os.path.basename(__file__))[0]
     toplevel = dut
@@ -147,7 +148,8 @@ def test_cic_d_fast(request, R, N, M, INP_DW, OUT_DW, SMALL_FOOTPRINT):
     parameters['INP_DW'] = INP_DW
     parameters['OUT_DW'] = OUT_DW
     parameters['SMALL_FOOTPRINT'] = SMALL_FOOTPRINT
-    parameters['STAGE_WIDTH'] = calculate_prune_bits(R,M,N,INP_DW,OUT_DW)
+    if PRECALCULATE_PRUNE_BITS:
+        parameters['STAGE_WIDTH'] = calculate_prune_bits(R,M,N,INP_DW,OUT_DW)
 
     extra_env = {f'PARAM_{k}': str(v) for k, v in parameters.items()}
     sim_build="sim_build/" + "_".join(("{}={}".format(*i) for i in parameters.items()))
@@ -161,49 +163,3 @@ def test_cic_d_fast(request, R, N, M, INP_DW, OUT_DW, SMALL_FOOTPRINT):
         sim_build=sim_build,
         extra_env=extra_env,
     )
-
-
-@pytest.mark.parametrize("R", [10, 100])
-@pytest.mark.parametrize("M", [1, 3])
-@pytest.mark.parametrize("N", [3, 7])
-@pytest.mark.parametrize("INP_DW", [17])
-@pytest.mark.parametrize("OUT_DW", [14, 17])
-@pytest.mark.parametrize("SMALL_FOOTPRINT", [1, 0])
-def test_cic_d(request, R, N, M, INP_DW, OUT_DW, SMALL_FOOTPRINT):
-    dut = "cic_d"
-    module = os.path.splitext(os.path.basename(__file__))[0]
-    toplevel = dut
-
-    verilog_sources = [
-        os.path.join(rtl_dir, f"{dut}.sv"),
-        os.path.join(rtl_dir, "comb.sv"),
-        os.path.join(rtl_dir, "integrator.sv"),
-        os.path.join(rtl_dir, "downsampler.sv"),
-    ]
-    includes = [
-        os.path.join(rtl_dir, ""),
-        os.path.join(rtl_dir, "cic_functions.vh"),
-    ]    
-
-    parameters = {}
-
-    parameters['CIC_R'] = R
-    parameters['CIC_M'] = M
-    parameters['CIC_N'] = N
-    parameters['INP_DW'] = INP_DW
-    parameters['OUT_DW'] = OUT_DW
-    parameters['SMALL_FOOTPRINT'] = SMALL_FOOTPRINT
-
-    extra_env = {f'PARAM_{k}': str(v) for k, v in parameters.items()}
-    sim_build="sim_build/" + "_".join(("{}={}".format(*i) for i in parameters.items()))
-    cocotb_test.simulator.run(
-        python_search=[tests_dir],
-        verilog_sources=verilog_sources,
-        includes=includes,
-        toplevel=toplevel,
-        module=module,
-        parameters=parameters,
-        sim_build=sim_build,
-        extra_env=extra_env,
-    )
-    

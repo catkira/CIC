@@ -16,13 +16,8 @@ class Model:
         self.cic_taps = np.zeros(R * M * N)
         self.cic_push_ptr = 0
         self.data_in_buf = 0
-
-        CIC_Filter_Gain = (self.R*self.M)**self.N        
-        Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
-        self.Num_Output_Bits_With_No_Truncation = Num_of_Bits_Growth + self.INP_DW - 1
-        self.Num_of_Output_Bits_Truncated = 0
         
-        self.extra_delay = 0    # extra delay before downsampler
+        self.extra_delay = 0    # extra delay before downsampler, not needed, can probably removed completely
         self.extra_delay_2 = 0  # extra delay after downsampler
         if SMALL_FOOTPRINT:
             self.extra_delay = 0
@@ -37,35 +32,44 @@ class Model:
         self.out_valid_2 = np.zeros(self.extra_delay_2+1)
         self.in_valid = 0
         self.decimation_counter = 0;
-        print(f"B_max: {self.Num_Output_Bits_With_No_Truncation}")
-        if True:
-            self.calculate_register_pruning()
 
-    def calculate_register_pruning(self):
+        CIC_Filter_Gain = (self.R*self.M)**self.N        
+        Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
+        self.Num_Output_Bits_With_No_Truncation = Num_of_Bits_Growth + self.INP_DW - 1
+        print(f"B_max: {self.Num_Output_Bits_With_No_Truncation}")
+
+    # this function is not needed for the model
+    # TODO: outsource it to a separate file
+    def calculate_register_pruning(self, R, N, M, INP_DW, OUT_DW):
         # calculate register pruning as described in Hogenauer, 1981
-        F_j = np.zeros(2*self.N + 2)
-        for j in np.arange(2*self.N,0,-1):
-            h_j = np.zeros((self.R*self.M-1)*self.N + 2*self.N)
-            if j <= self.N:
-                for k in np.arange((self.R*self.M-1)*self.N + j - 1):
-                    for L in range(int(np.floor(k/(self.R*self.M))) + 1):
-                        h_j[k] += (-1)**L*self.binom(self.N, L)*self.binom(self.N - j + k - self.R*self.M*L, k - self.R*self.M*L)
+        F_j = np.zeros(2*N + 2)
+        for j in np.arange(2*N,0,-1):
+            h_j = np.zeros((R*M-1)*N + 2*N)
+            if j <= N:
+                for k in np.arange((R*M-1)*N + j - 1):
+                    for L in range(int(np.floor(k/(R*M))) + 1):
+                        h_j[k] += (-1)**L*self.binom(N, L)*self.binom(N - j + k - R*M*L, k - R*M*L)
             else:
-                for k in np.arange(2*self.N + 1 - j + 1):
-                    h_j[k] = (-1)**k*self.binom(2*self.N + 1 - j, k)
+                for k in np.arange(2*N + 1 - j + 1):
+                    h_j[k] = (-1)**k*self.binom(2*N + 1 - j, k)
 
             F_j[j] = np.sqrt(np.dot(h_j,h_j))
 
-        F_j[2*self.N + 1]=1
+        F_j[2*N + 1]=1
 
-        self.Num_of_Output_Bits_Truncated = self.Num_Output_Bits_With_No_Truncation - self.OUT_DW + 1
+        self.Num_of_Output_Bits_Truncated = self.Num_Output_Bits_With_No_Truncation - OUT_DW + 1
         sigma = np.sqrt((2**self.Num_of_Output_Bits_Truncated)**2/12)
 
-        self.B_j = np.floor(-np.log2(F_j) + np.log2(sigma) + 0.5*math.log2(6/self.N));        
+        B_j = np.floor(-np.log2(F_j) + np.log2(sigma) + 0.5*math.log2(6/self.N));        
+        out_bits = self.Num_Output_Bits_With_No_Truncation - B_j
 
-        for j in np.arange(1, 2*self.N+1):
-            print(f"F_{j} = {F_j[j]}  \t -log_2(F_j) = {-np.log2(F_j[j])} \t B_j = {self.B_j[j]} \t bits = {self.Num_Output_Bits_With_No_Truncation - self.B_j[j]}")            
-        print(f"F_{2*self.N+1} = {F_j[2*self.N+1]}  \t\t\t -log_2(F_j) = {-np.log2(F_j[2*self.N+1])} \t B_j = {self.Num_of_Output_Bits_Truncated} \t bits = {self.OUT_DW}")
+        # last items need some special treatment
+        B_j[2*N+1] = self.Num_Output_Bits_With_No_Truncation - OUT_DW + 1
+        out_bits[2*N+1] = OUT_DW
+
+        for j in np.arange(1, 2*N+2):
+            print(f"F_{j} = {F_j[j]}  \t -log_2(F_j) = {-np.log2(F_j[j])} \t B_j = {B_j[j]} \t bits = {out_bits[j]}")            
+        return B_j
 
     def cic_model_stage_get_out(self, stage):
         ret = 0
