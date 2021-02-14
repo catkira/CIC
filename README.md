@@ -3,6 +3,7 @@
 This project is based on https://opencores.org/projects/cic_core_2 by Egor Igragimov.
 
 The main additions are
+- added variable downsampling rate
 - optimized pipeline structure of comb section -> has much less delay now
 - register pruning calculation outside of hdl code -> great speed up for sim and synth if R is large
 - python model for simulation
