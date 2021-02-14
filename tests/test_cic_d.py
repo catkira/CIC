@@ -34,7 +34,7 @@ class TB(object):
         self.input = []
 
         tests_dir = os.path.abspath(os.path.dirname(__file__))
-        model_dir = os.path.abspath(os.path.join(tests_dir, 'cic_d_model.py'))
+        model_dir = os.path.abspath(os.path.join(tests_dir, '../model/cic_d_model.py'))
         spec = importlib.util.spec_from_file_location("cic_d_model", model_dir)
         foo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(foo)
@@ -99,11 +99,11 @@ async def simple_test(dut):
 
 
 tests_dir = os.path.abspath(os.path.dirname(__file__))
-rtl_dir = os.path.abspath(os.path.join(tests_dir, '..', '..', 'rtl', 'verilog'))
+rtl_dir = os.path.abspath(os.path.join(tests_dir, '..', 'hdl'))
 
 def calculate_prune_bits(R, N, M, INP_DW, OUT_DW):
     tests_dir = os.path.abspath(os.path.dirname(__file__))
-    model_dir = os.path.abspath(os.path.join(tests_dir, 'cic_d_model.py'))
+    model_dir = os.path.abspath(os.path.join(tests_dir, '../model/cic_d_model.py'))
     spec = importlib.util.spec_from_file_location("cic_d_model", model_dir)
     foo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(foo)
