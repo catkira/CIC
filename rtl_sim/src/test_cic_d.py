@@ -27,7 +27,6 @@ class TB(object):
         self.M = int(dut.CIC_M)
         self.INP_DW = int(dut.INP_DW)
         self.OUT_DW = int(dut.OUT_DW)
-        self.SMALL_FOOTPRINT = int(dut.SMALL_FOOTPRINT)
 
         self.log = logging.getLogger("cocotb.tb")
         self.log.setLevel(logging.DEBUG)        
@@ -39,7 +38,7 @@ class TB(object):
         spec = importlib.util.spec_from_file_location("cic_d_model", model_dir)
         foo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(foo)
-        self.model = foo.Model(self.R, self.N, self.M, self.INP_DW, self.OUT_DW, self.SMALL_FOOTPRINT) 
+        self.model = foo.Model(self.R, self.N, self.M, self.INP_DW, self.OUT_DW) 
         cocotb.fork(Clock(self.dut.clk, CLK_PERIOD_NS, units='ns').start())
         
 
@@ -122,9 +121,8 @@ def calculate_prune_bits(R, N, M, INP_DW, OUT_DW):
 @pytest.mark.parametrize("N", [3, 7])
 @pytest.mark.parametrize("INP_DW", [17])
 @pytest.mark.parametrize("OUT_DW", [14, 17])
-@pytest.mark.parametrize("SMALL_FOOTPRINT", [1, 0])
 @pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [1, 0])
-def test_cic_d_fast(request, R, N, M, INP_DW, OUT_DW, SMALL_FOOTPRINT, PRECALCULATE_PRUNE_BITS):
+def test_cic_d(request, R, N, M, INP_DW, OUT_DW, PRECALCULATE_PRUNE_BITS):
     dut = "cic_d"
     module = os.path.splitext(os.path.basename(__file__))[0]
     toplevel = dut
@@ -147,7 +145,6 @@ def test_cic_d_fast(request, R, N, M, INP_DW, OUT_DW, SMALL_FOOTPRINT, PRECALCUL
     parameters['CIC_N'] = N
     parameters['INP_DW'] = INP_DW
     parameters['OUT_DW'] = OUT_DW
-    parameters['SMALL_FOOTPRINT'] = SMALL_FOOTPRINT
     if PRECALCULATE_PRUNE_BITS:
         parameters['STAGE_WIDTH'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
 

@@ -5,7 +5,7 @@ import math
 import numpy as np
 
 class Model:
-    def __init__(self, R, N ,M, INP_DW, OUT_DW, SMALL_FOOTPRINT, register_pruning=1):
+    def __init__(self, R, N ,M, INP_DW, OUT_DW, register_pruning=1):
         self.R = R
         self.M = M
         self.N = N
@@ -17,14 +17,8 @@ class Model:
         self.cic_push_ptr = 0
         self.data_in_buf = 0
         
-        self.extra_delay = 0    # extra delay before downsampler, not needed, can probably removed completely
-        self.extra_delay_2 = 0  # extra delay after downsampler
-        if SMALL_FOOTPRINT:
-            self.extra_delay = 0
-            self.extra_delay_2 = 8
-        else:
-            self.extra_delay = 0
-            self.extra_delay_2 = (self.N-1)*2
+        self.extra_delay = 0                  # extra delay before downsampler, not needed, can probably removed completely
+        self.extra_delay_2 = (self.N-1)*2     # extra delay after downsampler
             
         self.data_out_buf = np.zeros(self.extra_delay+1)
         self.data_out_buf_2 = np.zeros(self.extra_delay_2+1)

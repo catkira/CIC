@@ -8,7 +8,6 @@ module cic_d
     parameter CIC_R = 10,           ///< decimation ratio
     parameter CIC_N = 7,            ///< number of stages
     parameter CIC_M = 1,            ///< delay in comb
-    parameter SMALL_FOOTPRINT = 1,   ///< reduced registers usage, f_clk / (f_samp/CIC_R)  > CIC_N required  
     parameter [32*(CIC_N*2+2)-1:0] STAGE_WIDTH = {(CIC_N*2+2){32'd0}}   // stage width can be given as a parameter to speed up synthesis
 )
 /*********************************************************************************************/
@@ -93,17 +92,7 @@ genvar  j;
 wire                    comb_chain_out_str;
 reg     [CIC_N : 0]     comb_inp_str_d;
 generate
-    wire summ_rdy_str;
-    if (SMALL_FOOTPRINT != 0) begin                     //  generate a N clock cycles delayed inp_str 
-        always @(negedge reset_n or posedge clk)        //  that will become summ_rdy_str of the comb_stages
-            if (~reset_n)           comb_inp_str_d <= '0;
-            else                    comb_inp_str_d <= {comb_inp_str_d[CIC_N - 1 : 0], ds_out_samp_str};
-    end
     
-    if (SMALL_FOOTPRINT == 0)       assign summ_rdy_str = '0;                       // wire is not used
-    else                            assign summ_rdy_str = comb_inp_str_d[CIC_N];    // ds_out_samp_str delayed by N cycles
-                                                                                    // this gives 1 clock cycle for every comb stage
-
     for (j = 0; j < CIC_N; j = j + 1) begin : comb_stage
         localparam B_m_j_m1             =    get_prune_bits(CIC_N + j);
         localparam B_m_j                =    get_prune_bits(CIC_N + j + 1);
@@ -122,21 +111,18 @@ generate
         
         comb #(
                 .SAMP_WIDTH     (idw_cur),
-                .CIC_M          (CIC_M),
-                .SMALL_FOOTPRINT(SMALL_FOOTPRINT)
+                .CIC_M          (CIC_M)
             )
             comb_inst(
                 .clk            (clk),
                 .reset_n        (reset_n),
-                .samp_inp_str   (comb_in_str),          // not used if SMALL_FOOTPRINT == 1
+                .samp_inp_str   (comb_in_str),
                 .samp_inp_data  (comb_in),
-                .summ_rdy_str   (summ_rdy_str),         // not used if SMALL_FOOTPRINT == 0, all stages latch at the same time, timing is most critical for last stage
-                .samp_out_str   (comb_dv),              // not used if SMALL_FOOTPRINT == 1
+                .samp_out_str   (comb_dv),
                 .samp_out_data  (comb_inst_out)
                 );
         wire comb_dv;
-        if (SMALL_FOOTPRINT == 0)       assign comb_chain_out_str = comb_stage[CIC_N - 1].comb_dv;  // use buffered inp_str 
-        else                            assign comb_chain_out_str = comb_inp_str_d[CIC_N - 1];      // use unbuffered inp_str
+        assign comb_chain_out_str = comb_stage[CIC_N - 1].comb_dv;  // use buffered inp_str 
         initial begin
             //$display("i:%d  comb idw=%2d odw=%2d  B(%2d, %3d, %2d, %2d, %2d, %2d)=%2d", j, idw_cur, odw_cur, CIC_N + j + 1, CIC_R, CIC_M, CIC_N, INP_DW, OUT_DW, B_m_j);
             //if (j != 0) $display("odw_prev=%2d, comb_stage[j - 1].odw_cur=%2d", odw_prev, comb_stage[j - 1].odw_cur);
