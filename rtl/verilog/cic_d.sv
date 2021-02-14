@@ -14,10 +14,10 @@ module cic_d
 (
     input                                   clk,            ///< input clock
     input                                   reset_n,        ///< input reset
-    input   wire    signed [INP_DW-1:0]     inp_samp_data,  ///< input data
-    input                                   inp_samp_str,   ///< input data ready strobe
-    output  wire    signed [OUT_DW-1:0]     out_samp_data,  ///< output data
-    output                                  out_samp_str    ///< output data ready strobe
+    input   wire    signed [INP_DW-1:0]     s_axis_in_tdata,  ///< input data
+    input                                   s_axis_in_tvalid,   ///< input data ready strobe
+    output  wire    signed [OUT_DW-1:0]     m_axis_out_tdata,  ///< output data
+    output                                  m_axis_out_tvalid    ///< output data ready strobe
 );
 /*********************************************************************************************/
 `include "cic_functions.vh"
@@ -43,7 +43,7 @@ generate
         localparam idw_cur = B_max - B_jm1 + 1;         ///< data width on the input
         localparam odw_cur = B_max - B_j   + 1;         ///< data width on the output
         wire signed [idw_cur - 1 : 0] int_in;           ///< input data bus
-        if ( i == 0 )   assign int_in = inp_samp_data;                  ///< if it is the first stage, then takes data from input of CIC filter
+        if ( i == 0 )   assign int_in = s_axis_in_tdata;                  ///< if it is the first stage, then takes data from input of CIC filter
         else            assign int_in = int_stage[i - 1].int_out;       ///< otherwise, takes data from the previous stage of the filter
         wire signed [odw_cur - 1 : 0] int_out;
         integrator #(
@@ -54,7 +54,7 @@ generate
             .clk                    (clk),
             .reset_n                (reset_n),
             .inp_samp_data  (int_in),
-            .inp_samp_str   (inp_samp_str),
+            .inp_samp_str   (s_axis_in_tvalid),
             .out_samp_data  (int_out)
             );
         initial begin
@@ -145,8 +145,8 @@ always @(negedge reset_n or posedge clk)
     if      (~reset_n)                      comb_out_samp_str_reg <= '0;
     else                                    comb_out_samp_str_reg <= comb_chain_out_str;
 
-assign out_samp_data    = comb_out_samp_data_reg;
-assign out_samp_str     = comb_out_samp_str_reg;
+assign m_axis_out_tdata      = comb_out_samp_data_reg;
+assign m_axis_out_tvalid     = comb_out_samp_str_reg;
 /*********************************************************************************************/
 
 task print_parameters_nice;

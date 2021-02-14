@@ -55,8 +55,8 @@ class TB(object):
             self.input.append(value)
             self.model.set_data(value) 
             self.model.tick()
-            self.dut.inp_samp_data <= value
-            self.dut.inp_samp_str <= 1
+            self.dut.s_axis_in_tdata <= value
+            self.dut.s_axis_in_tvalid <= 1
 
     async def cycle_reset(self):
         self.dut.reset_n.setimmediatevalue(1)
@@ -83,8 +83,8 @@ async def simple_test(dut):
             output_model.append(tb.model.get_data())
             # print(f"model: {output_model[-1]}")
 
-        if dut.out_samp_str == 1:
-            a=dut.out_samp_data.value.integer
+        if dut.m_axis_out_tvalid == 1:
+            a=dut.m_axis_out_tdata.value.integer
             if (a & (1 << (tb.OUT_DW - 1))) != 0:
                 a = a - (1 << tb.OUT_DW)
             output.append(a)
