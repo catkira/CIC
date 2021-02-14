@@ -8,16 +8,19 @@ module cic_d
     parameter CIC_R = 10,           ///< decimation ratio
     parameter CIC_N = 7,            ///< number of stages
     parameter CIC_M = 1,            ///< delay in comb
-    parameter [32*(CIC_N*2+2)-1:0] PRUNE_BITS = {(CIC_N*2+2){32'd0}}   // stage width can be given as a parameter to speed up synthesis
+    parameter [32*(CIC_N*2+2)-1:0] PRUNE_BITS = {(CIC_N*2+2){32'd0}},   // stage width can be given as a parameter to speed up synthesis
+    parameter VARIABLE_RATE = 1
 )
 /*********************************************************************************************/
 (
-    input                                   clk,            ///< input clock
-    input                                   reset_n,        ///< input reset
-    input   wire    signed [INP_DW-1:0]     s_axis_in_tdata,  ///< input data
-    input                                   s_axis_in_tvalid,   ///< input data ready strobe
-    output  wire    signed [OUT_DW-1:0]     m_axis_out_tdata,  ///< output data
-    output                                  m_axis_out_tvalid    ///< output data ready strobe
+    input                                   clk,
+    input                                   reset_n,
+    input   wire    signed [INP_DW-1:0]     s_axis_in_tdata,
+    input                                   s_axis_in_tvalid,
+    input   wire    signed [INP_DW-1:0]     s_axis_rate_tdata,
+    input                                   s_axis_rate_tvalid,  
+    output  wire    signed [OUT_DW-1:0]     m_axis_out_tdata,
+    output                                  m_axis_out_tvalid 
 );
 /*********************************************************************************************/
 `include "cic_functions.vh"
@@ -74,19 +77,38 @@ initial begin
         //$display("i downsamp dw %d , int_stage[%2d].dw_out = %2d", ds_dw, CIC_N - 1, int_stage[CIC_N - 1].odw_cur);
         $display("i downsamp dw %d", ds_dw);
 end
-downsampler #(
-        .DATA_WIDTH_INP (ds_dw),
-        .CIC_R                  (CIC_R)
-    )
-    downsampler_inst
-    (
-        .clk                    (clk),
-        .reset_n                (reset_n),
-        .inp_samp_data  (int_stage[CIC_N - 1].int_out),
-        .inp_samp_str   (inp_samp_str),
-        .out_samp_data  (ds_out_samp_data),
-        .out_samp_str   (ds_out_samp_str)
-    );
+if (VARIABLE_RATE) begin
+    downsampler_variable #(
+            .DATA_WIDTH_INP (ds_dw),
+            .DATA_WIDTH_RATE (16)
+        )
+        downsampler_variable_inst
+        (
+            .clk                    (clk),
+            .reset_n                (reset_n),
+            .s_axis_in_tdata    (int_stage[CIC_N - 1].int_out),
+            .s_axis_in_tvalid   (inp_samp_str),
+            .s_axis_rate_tdata    (s_axis_rate_tdata),
+            .s_axis_rate_tvalid   (s_axis_rate_tvalid),
+            .m_axis_out_tdata  (ds_out_samp_data),
+            .m_axis_out_tvalid   (ds_out_samp_str)
+        );
+end
+else begin
+    downsampler #(
+            .DATA_WIDTH_INP (ds_dw),
+            .CIC_R                  (CIC_R)
+        )
+        downsampler_inst
+        (
+            .clk                    (clk),
+            .reset_n                (reset_n),
+            .s_axis_in_tdata    (int_stage[CIC_N - 1].int_out),
+            .s_axis_in_tvalid   (inp_samp_str),
+            .m_axis_out_tdata  (ds_out_samp_data),
+            .m_axis_out_tvalid   (ds_out_samp_str)
+        );
+end
 /*********************************************************************************************/
 genvar  j;
 wire                    comb_chain_out_str;

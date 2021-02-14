@@ -1,10 +1,10 @@
 `timescale 1ns / 1ns
 
-module downsampler
+module downsampler_variable
 /*********************************************************************************************/
 #(
     parameter DATA_WIDTH_INP = 8,
-    parameter CIC_R = 4
+    parameter DATA_WIDTH_RATE = 16
 )
 /*********************************************************************************************/
 (
@@ -12,32 +12,40 @@ module downsampler
     input                   reset_n,
     input   wire    signed  [DATA_WIDTH_INP - 1:0]  s_axis_in_tdata,
     input                   s_axis_in_tvalid,
+    input   wire    signed  [DATA_WIDTH_RATE - 1:0] s_axis_rate_tdata,
+    input                   s_axis_rate_tvalid,
     output  reg     signed  [DATA_WIDTH_INP - 1:0]  m_axis_out_tdata,
     output  reg             m_axis_out_tvalid
 );
 /*********************************************************************************************/
-localparam DECIM_COUNTER_WIDTH = $clog2(CIC_R);
-reg [DECIM_COUNTER_WIDTH - 1 : 0] counter;
+reg [DATA_WIDTH_RATE - 1 : 0] counter;
+reg [DATA_WIDTH_RATE - 1 : 0] rate_buf;
+/*********************************************************************************************/
+always @(posedge clk or negedge reset_n)
+begin
+    if (!reset_n)           rate_buf <= '1;
+    else if (s_axis_rate_tvalid)  rate_buf <= s_axis_rate_tdata;
+end
 /*********************************************************************************************/
 // decimation counter
 always @(posedge clk or negedge reset_n)
 begin
-    if (!reset_n)           counter <= '0;
-    else if (s_axis_in_tvalid)  counter <= (counter < CIC_R - 1) ? counter + {{(DECIM_COUNTER_WIDTH - 1){1'b0}}, 1'b1} : '0;
+    if (!reset_n || s_axis_rate_tvalid)           counter <= '0;
+    else if (s_axis_in_tvalid)  counter <= (counter < rate_buf - 1) ? counter + {{(DATA_WIDTH_RATE - 1){1'b0}}, 1'b1} : '0;
 end
 /*********************************************************************************************/
 // output register
 always @(posedge clk or negedge reset_n)
 begin
-    if (!reset_n)           m_axis_out_tdata <= '0;
-    else if (s_axis_in_tvalid)  m_axis_out_tdata <= (counter < CIC_R - 1) ? m_axis_out_tdata : s_axis_in_tdata;
+    if (!reset_n || s_axis_rate_tvalid)           m_axis_out_tdata <= '0;
+    else if (s_axis_in_tvalid)  m_axis_out_tdata <= (counter < rate_buf - 1) ? m_axis_out_tdata : s_axis_in_tdata;
 end
 /*********************************************************************************************/
 // data valid register
 always @(posedge clk or negedge reset_n)
 begin
-    if (!reset_n)           m_axis_out_tvalid <= 1'b0;
-    else if (s_axis_in_tvalid)  m_axis_out_tvalid <= (counter == CIC_R - 1);
+    if (!reset_n || s_axis_rate_tvalid)           m_axis_out_tvalid <= 1'b0;
+    else if (s_axis_in_tvalid)  m_axis_out_tvalid <= (counter == rate_buf - 1);
     else                    m_axis_out_tvalid <= 1'b0;
 end
 /*********************************************************************************************/
