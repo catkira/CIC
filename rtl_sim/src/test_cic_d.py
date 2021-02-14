@@ -111,14 +111,14 @@ def calculate_prune_bits(R, N, M, INP_DW, OUT_DW):
     B_j = model.calculate_register_pruning(R, N, M, INP_DW, OUT_DW)
     
     ret = 0;
-    for i in range(2*N+1):
-        print(f"B_j[{i}] = {B_j[i+1]}")
-        ret += int(B_j[i+1])<<(32*(i+1))
+    for i in range(1,2*N+2):
+        print(f"B_j[{i}] = {B_j[i]}")
+        ret += int(B_j[i])<<(32*(i))
     return ret
 
 @pytest.mark.parametrize("R", [10, 100])
-@pytest.mark.parametrize("M", [1, 3])
 @pytest.mark.parametrize("N", [3, 7])
+@pytest.mark.parametrize("M", [1, 3])
 @pytest.mark.parametrize("INP_DW", [17])
 @pytest.mark.parametrize("OUT_DW", [14, 17])
 @pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [1, 0])
@@ -146,7 +146,7 @@ def test_cic_d(request, R, N, M, INP_DW, OUT_DW, PRECALCULATE_PRUNE_BITS):
     parameters['INP_DW'] = INP_DW
     parameters['OUT_DW'] = OUT_DW
     if PRECALCULATE_PRUNE_BITS:
-        parameters['STAGE_WIDTH'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
+        parameters['PRUNE_BITS'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
 
     extra_env = {f'PARAM_{k}': str(v) for k, v in parameters.items()}
     sim_build="sim_build/" + "_".join(("{}={}".format(*i) for i in parameters.items()))

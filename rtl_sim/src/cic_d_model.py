@@ -7,8 +7,8 @@ import numpy as np
 class Model:
     def __init__(self, R, N ,M, INP_DW, OUT_DW, register_pruning=1):
         self.R = R
-        self.M = M
         self.N = N
+        self.M = M
         self.INP_DW = INP_DW
         self.OUT_DW = OUT_DW
         self.register_pruning = register_pruning

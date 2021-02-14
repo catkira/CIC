@@ -8,7 +8,7 @@ module cic_d
     parameter CIC_R = 10,           ///< decimation ratio
     parameter CIC_N = 7,            ///< number of stages
     parameter CIC_M = 1,            ///< delay in comb
-    parameter [32*(CIC_N*2+2)-1:0] STAGE_WIDTH = {(CIC_N*2+2){32'd0}}   // stage width can be given as a parameter to speed up synthesis
+    parameter [32*(CIC_N*2+2)-1:0] PRUNE_BITS = {(CIC_N*2+2){32'd0}}   // stage width can be given as a parameter to speed up synthesis
 )
 /*********************************************************************************************/
 (
@@ -26,12 +26,12 @@ localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
 /*********************************************************************************************/
 
 function integer get_prune_bits(input byte i);
-    if (STAGE_WIDTH[32*(CIC_N*2+2)-1:0] == 0) begin
+    if (PRUNE_BITS[32*(CIC_N*2+2)-1:0] == 0) begin
         return B_calc(i, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);
     end
     else begin
         //#$display("stage=%d return %d calculated %d", i, STAGE_WIDTH[32*i +:32], B_calc(i, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW));
-        return STAGE_WIDTH[32*i +:32];
+        return PRUNE_BITS[32*i +:32];
     end
 endfunction
 
