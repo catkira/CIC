@@ -17,8 +17,8 @@ class Model:
         self.cic_push_ptr = 0
         self.data_in_buf = 0
         
-        self.extra_delay = 0                  # extra delay before downsampler, not needed, can probably removed completely
-        self.extra_delay_2 = (self.N-1)*2     # extra delay after downsampler
+        self.extra_delay = 0         # extra delay before downsampler
+        self.extra_delay_2 = 4 + (self.N-1)*2     # extra delay after downsampler
             
         self.data_out_buf = np.zeros(self.extra_delay+1)
         self.data_out_buf_2 = np.zeros(self.extra_delay_2+1)
@@ -42,6 +42,13 @@ class Model:
     def set_data(self, data_in):
         self.data_in_buf = data_in
         self.in_valid = 1
+        
+    def reset(self):
+        self.decimation_counter = 0;
+        self.data_out_buf = np.zeros(self.extra_delay+1)
+        self.data_out_buf_2 = np.zeros(self.extra_delay_2+1)
+        self.out_valid = np.zeros(self.extra_delay+1)
+        self.out_valid_2 = np.zeros(self.extra_delay_2+1)        
         
     def tick(self):
         # propagate data to next stage

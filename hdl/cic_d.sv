@@ -45,20 +45,28 @@ generate
         localparam B_j   = get_prune_bits(i+1); ///< the number of bits to prune in current stage
         localparam idw_cur = B_max - B_jm1 + 1;         ///< data width on the input
         localparam odw_cur = B_max - B_j   + 1;         ///< data width on the output
+        
         wire signed [idw_cur - 1 : 0] int_in;           ///< input data bus
         if ( i == 0 )   assign int_in = s_axis_in_tdata;                  ///< if it is the first stage, then takes data from input of CIC filter
         else            assign int_in = int_stage[i - 1].int_out;       ///< otherwise, takes data from the previous stage of the filter
         wire signed [odw_cur - 1 : 0] int_out;
+
+        wire            int_in_samp_str;
+        if ( i == 0 )   assign int_in_samp_str = s_axis_in_tvalid;
+        else            assign int_in_samp_str = int_stage[i - 1].int_out_samp_str;
+        wire            int_out_samp_str;
+        
         integrator #(
             idw_cur,
             odw_cur
             )
             int_inst(
-            .clk                    (clk),
-            .reset_n                (reset_n),
+            .clk            (clk),
+            .reset_n        (reset_n),
             .inp_samp_data  (int_in),
             .inp_samp_str   (s_axis_in_tvalid),
-            .out_samp_data  (int_out)
+            .out_samp_data  (int_out),
+            .out_samp_str   (int_out_samp_str)
             );
         initial begin
             //$display("i:%d integ idw=%2d odw=%2d  B(%2d, %3d, %2d, %2d, %2d, %2d)=%2d, Bj-1=%2d, F_sq=%8d", i, idw_cur, odw_cur, i + 1, CIC_R, CIC_M, CIC_N, INP_DW, OUT_DW, B_j, B_jm1, F_sq_j);
@@ -71,7 +79,7 @@ endgenerate
 localparam B_m = get_prune_bits(CIC_N);    ///< bits to prune on the m-th stage
 localparam ds_dw = B_max - B_m + 1;   ///< data width of the downsampler
 wire    signed [ds_dw - 1 : 0]  ds_out_samp_data;
-wire                                                    ds_out_samp_str;
+wire                            ds_out_samp_str;
 /*********************************************************************************************/
 initial begin
         //$display("i downsamp dw %d , int_stage[%2d].dw_out = %2d", ds_dw, CIC_N - 1, int_stage[CIC_N - 1].odw_cur);
@@ -87,7 +95,7 @@ if (VARIABLE_RATE) begin
             .clk                    (clk),
             .reset_n                (reset_n),
             .s_axis_in_tdata    (int_stage[CIC_N - 1].int_out),
-            .s_axis_in_tvalid   (inp_samp_str),
+            .s_axis_in_tvalid   (s_axis_in_tvalid),
             .s_axis_rate_tdata    (s_axis_rate_tdata),
             .s_axis_rate_tvalid   (s_axis_rate_tvalid),
             .m_axis_out_tdata  (ds_out_samp_data),
@@ -104,7 +112,7 @@ else begin
             .clk                    (clk),
             .reset_n                (reset_n),
             .s_axis_in_tdata    (int_stage[CIC_N - 1].int_out),
-            .s_axis_in_tvalid   (inp_samp_str),
+            .s_axis_in_tvalid   (s_axis_in_tvalid),
             .m_axis_out_tdata  (ds_out_samp_data),
             .m_axis_out_tvalid   (ds_out_samp_str)
         );

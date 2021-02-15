@@ -37,6 +37,7 @@ begin
     if (!reset_n)           data_out_reg <= '0;
     else if (samp_inp_str)  data_out_reg <= samp_inp_data - data_reg[CIC_M - 1];
 end
+
 assign samp_out_data = data_out_reg;
 always @(posedge clk or negedge reset_n)
 begin
