@@ -90,15 +90,15 @@ async def simple_test(dut):
         await RisingEdge(dut.clk)
         if(tb.model.data_valid()):
             output_model.append(tb.model.get_data())
-            print(f"model: {output_model[-1]} [{len(output_model)}]")
+            #print(f"model: {output_model[-1]} [{len(output_model)}]")
 
         if dut.m_axis_out_tvalid == 1:
             a=dut.m_axis_out_tdata.value.integer
             if (a & (1 << (tb.OUT_DW - 1))) != 0:
                 a = a - (1 << tb.OUT_DW)
             output.append(a)
-            print(f"hdl: {a} [{len(output)}]")
-        print(f"{int(tb.model.data_valid())} {dut.m_axis_out_tvalid}")
+            #print(f"hdl: {a} [{len(output)}]")
+        #print(f"{int(tb.model.data_valid())} {dut.m_axis_out_tvalid}")
         count += 1
         if count > max_count:
             assert False, "not enough items received"
@@ -125,7 +125,7 @@ async def variable_rate_test(dut):
         dut.s_axis_rate_tvalid = 0
         await RisingEdge(dut.clk)
         #
-        num_items = 1000
+        num_items = 10
         cocotb.fork(tb.generate_input(num_items))
         output = []
         output_model = []
@@ -173,63 +173,14 @@ def calculate_prune_bits(R, N, M, INP_DW, OUT_DW):
         ret += int(B_j[i])<<(32*(i))
     return ret
 
-@pytest.mark.parametrize("R", [10, 100])
-@pytest.mark.parametrize("N", [3, 7])
-@pytest.mark.parametrize("M", [1, 3])
-@pytest.mark.parametrize("INP_DW", [17])
-@pytest.mark.parametrize("OUT_DW", [14, 17])
-@pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [0])
-@pytest.mark.parametrize("VARIABLE_RATE", [0])
-def test_cic_d(request, R, N, M, INP_DW, OUT_DW, VARIABLE_RATE, PRECALCULATE_PRUNE_BITS):
-    dut = "cic_d"
-    module = os.path.splitext(os.path.basename(__file__))[0]
-    toplevel = dut
-
-    verilog_sources = [
-        os.path.join(rtl_dir, f"{dut}.sv"),
-        os.path.join(rtl_dir, "comb.sv"),
-        os.path.join(rtl_dir, "integrator.sv"),
-        os.path.join(rtl_dir, "downsampler.sv"),
-        os.path.join(rtl_dir, "downsampler_variable.sv"),
-    ]
-    includes = [
-        os.path.join(rtl_dir, ""),
-        os.path.join(rtl_dir, "cic_functions.vh"),
-    ]    
-
-    parameters = {}
-
-    parameters['CIC_R'] = R
-    parameters['CIC_M'] = M
-    parameters['CIC_N'] = N
-    parameters['INP_DW'] = INP_DW
-    parameters['OUT_DW'] = OUT_DW
-    parameters['VARIABLE_RATE'] = VARIABLE_RATE
-    if PRECALCULATE_PRUNE_BITS:
-        parameters['PRUNE_BITS'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
-
-    extra_env = {f'PARAM_{k}': str(v) for k, v in parameters.items()}
-    sim_build="sim_build/" + "_".join(("{}={}".format(*i) for i in parameters.items()))
-    cocotb_test.simulator.run(
-        python_search=[tests_dir],
-        verilog_sources=verilog_sources,
-        includes=includes,
-        toplevel=toplevel,
-        module=module,
-        parameters=parameters,
-        sim_build=sim_build,
-        extra_env=extra_env,
-        testcase="simple_test",
-    )
-    
-# @pytest.mark.parametrize("R", [100])    # max rate
+# @pytest.mark.parametrize("R", [10, 100])
 # @pytest.mark.parametrize("N", [3, 7])
 # @pytest.mark.parametrize("M", [1, 3])
 # @pytest.mark.parametrize("INP_DW", [17])
 # @pytest.mark.parametrize("OUT_DW", [14, 17])
-# @pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [1, 0])
-# @pytest.mark.parametrize("VARIABLE_RATE", [1])
-# def test_cic_d_variable_rate(request, R, N, M, INP_DW, OUT_DW, VARIABLE_RATE, PRECALCULATE_PRUNE_BITS):
+# @pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [0])
+# @pytest.mark.parametrize("VARIABLE_RATE", [0])
+# def test_cic_d(request, R, N, M, INP_DW, OUT_DW, VARIABLE_RATE, PRECALCULATE_PRUNE_BITS):
     # dut = "cic_d"
     # module = os.path.splitext(os.path.basename(__file__))[0]
     # toplevel = dut
@@ -268,5 +219,54 @@ def test_cic_d(request, R, N, M, INP_DW, OUT_DW, VARIABLE_RATE, PRECALCULATE_PRU
         # parameters=parameters,
         # sim_build=sim_build,
         # extra_env=extra_env,
-        # testcase="variable_rate_test",        
-    # )    
+        # testcase="simple_test",
+    # )
+    
+@pytest.mark.parametrize("R", [100])    # max rate
+@pytest.mark.parametrize("N", [3, 7])
+@pytest.mark.parametrize("M", [1, 3])
+@pytest.mark.parametrize("INP_DW", [17])
+@pytest.mark.parametrize("OUT_DW", [14, 17])
+@pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [1, 0])
+@pytest.mark.parametrize("VARIABLE_RATE", [1])
+def test_cic_d_variable_rate(request, R, N, M, INP_DW, OUT_DW, VARIABLE_RATE, PRECALCULATE_PRUNE_BITS):
+    dut = "cic_d"
+    module = os.path.splitext(os.path.basename(__file__))[0]
+    toplevel = dut
+
+    verilog_sources = [
+        os.path.join(rtl_dir, f"{dut}.sv"),
+        os.path.join(rtl_dir, "comb.sv"),
+        os.path.join(rtl_dir, "integrator.sv"),
+        os.path.join(rtl_dir, "downsampler.sv"),
+        os.path.join(rtl_dir, "downsampler_variable.sv"),
+    ]
+    includes = [
+        os.path.join(rtl_dir, ""),
+        os.path.join(rtl_dir, "cic_functions.vh"),
+    ]    
+
+    parameters = {}
+
+    parameters['CIC_R'] = R
+    parameters['CIC_M'] = M
+    parameters['CIC_N'] = N
+    parameters['INP_DW'] = INP_DW
+    parameters['OUT_DW'] = OUT_DW
+    parameters['VARIABLE_RATE'] = VARIABLE_RATE
+    if PRECALCULATE_PRUNE_BITS:
+        parameters['PRUNE_BITS'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
+
+    extra_env = {f'PARAM_{k}': str(v) for k, v in parameters.items()}
+    sim_build="sim_build/" + "_".join(("{}={}".format(*i) for i in parameters.items()))
+    cocotb_test.simulator.run(
+        python_search=[tests_dir],
+        verilog_sources=verilog_sources,
+        includes=includes,
+        toplevel=toplevel,
+        module=module,
+        parameters=parameters,
+        sim_build=sim_build,
+        extra_env=extra_env,
+        testcase="variable_rate_test",        
+    )    
