@@ -38,6 +38,13 @@ class Model:
         for i_t in np.arange(self.R*self.M):
             ret += self.cic_taps[i_t + stage * self.R*self.M]
         return ret
+        
+    def set_rate(self, rate):
+        self.R = rate
+        self.reset()
+        #CIC_Filter_Gain = (self.R*self.M)**self.N        
+        #Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
+        #self.Num_Output_Bits_With_No_Truncation = Num_of_Bits_Growth + self.INP_DW - 1
 
     def set_data(self, data_in):
         self.data_in_buf = data_in
@@ -45,6 +52,10 @@ class Model:
         
     def reset(self):
         self.decimation_counter = 0;
+        self.cic_push_ptr = 0
+        self.data_in_buf = 0       
+        self.in_valid = 0
+        self.cic_taps = np.zeros(self.R * self.M * self.N)        
         self.data_out_buf = np.zeros(self.extra_delay+1)
         self.data_out_buf_2 = np.zeros(self.extra_delay_2+1)
         self.out_valid = np.zeros(self.extra_delay+1)
@@ -90,7 +101,6 @@ class Model:
 
     def get_scaled_data(self):
         cic_B_scale_out = self.Num_Output_Bits_With_No_Truncation + 1 - self.OUT_DW
-        cic_B_prune_last_stage = cic_B_scale_out
-        cic_S_prune_last_stage = int(1) << int(cic_B_prune_last_stage)
+        cic_S_prune_last_stage = int(1) << int(cic_B_scale_out)
         return self.cic_model_stage_get_out(self.N - 1) // cic_S_prune_last_stage
     

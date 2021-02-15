@@ -26,6 +26,20 @@ module cic_d
 `include "cic_functions.vh"
 /*********************************************************************************************/
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
+reg        [15:0]     current_B_max = B_max;
+reg        [15:0]     current_dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
+always @(posedge clk or negedge reset_n)
+begin
+    if (!reset_n) begin
+        current_B_max <= B_max;
+        current_dw_out <= B_max - get_prune_bits(2*CIC_N) + 1;
+    end
+    else if (s_axis_rate_tvalid) begin
+        //current_B_max <= clog2_l((s_axis_rate_tdata * CIC_M) ** CIC_N) + INP_DW - 1;
+        current_B_max <= 10;
+        current_dw_out <= clog2_l((s_axis_rate_tdata * CIC_M) ** CIC_N) + INP_DW - 1 - get_prune_bits(2*CIC_N) + 1;
+    end
+end
 /*********************************************************************************************/
 
 function integer get_prune_bits(input byte i);
@@ -50,11 +64,6 @@ generate
         if ( i == 0 )   assign int_in = s_axis_in_tdata;                  ///< if it is the first stage, then takes data from input of CIC filter
         else            assign int_in = int_stage[i - 1].int_out;       ///< otherwise, takes data from the previous stage of the filter
         wire signed [odw_cur - 1 : 0] int_out;
-
-        wire            int_in_samp_str;
-        if ( i == 0 )   assign int_in_samp_str = s_axis_in_tvalid;
-        else            assign int_in_samp_str = int_stage[i - 1].int_out_samp_str;
-        wire            int_out_samp_str;
         
         integrator #(
             idw_cur,
@@ -65,8 +74,7 @@ generate
             .reset_n        (reset_n),
             .inp_samp_data  (int_in),
             .inp_samp_str   (s_axis_in_tvalid),
-            .out_samp_data  (int_out),
-            .out_samp_str   (int_out_samp_str)
+            .out_samp_data  (int_out)
             );
         initial begin
             //$display("i:%d integ idw=%2d odw=%2d  B(%2d, %3d, %2d, %2d, %2d, %2d)=%2d, Bj-1=%2d, F_sq=%8d", i, idw_cur, odw_cur, i + 1, CIC_R, CIC_M, CIC_N, INP_DW, OUT_DW, B_j, B_jm1, F_sq_j);
@@ -75,9 +83,10 @@ generate
     end
 endgenerate
 /*********************************************************************************************/
-/// downsampler takes data from m-th stage
 localparam B_m = get_prune_bits(CIC_N);    ///< bits to prune on the m-th stage
 localparam ds_dw = B_max - B_m + 1;   ///< data width of the downsampler
+localparam dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
+/*********************************************************************************************/
 wire    signed [ds_dw - 1 : 0]  ds_out_samp_data;
 wire                            ds_out_samp_str;
 /*********************************************************************************************/
@@ -88,18 +97,18 @@ end
 if (VARIABLE_RATE) begin
     downsampler_variable #(
             .DATA_WIDTH_INP (ds_dw),
-            .DATA_WIDTH_RATE (16)
+            .DATA_WIDTH_RATE (INP_DW)
         )
         downsampler_variable_inst
         (
             .clk                    (clk),
             .reset_n                (reset_n),
-            .s_axis_in_tdata    (int_stage[CIC_N - 1].int_out),
-            .s_axis_in_tvalid   (s_axis_in_tvalid),
-            .s_axis_rate_tdata    (s_axis_rate_tdata),
-            .s_axis_rate_tvalid   (s_axis_rate_tvalid),
-            .m_axis_out_tdata  (ds_out_samp_data),
-            .m_axis_out_tvalid   (ds_out_samp_str)
+            .s_axis_in_tdata        (int_stage[CIC_N - 1].int_out),
+            .s_axis_in_tvalid       (s_axis_in_tvalid),
+            .s_axis_rate_tdata      (s_axis_rate_tdata),
+            .s_axis_rate_tvalid     (s_axis_rate_tvalid),
+            .m_axis_out_tdata       (ds_out_samp_data),
+            .m_axis_out_tvalid      (ds_out_samp_str)
         );
 end
 else begin
@@ -111,10 +120,10 @@ else begin
         (
             .clk                    (clk),
             .reset_n                (reset_n),
-            .s_axis_in_tdata    (int_stage[CIC_N - 1].int_out),
-            .s_axis_in_tvalid   (s_axis_in_tvalid),
-            .m_axis_out_tdata  (ds_out_samp_data),
-            .m_axis_out_tvalid   (ds_out_samp_str)
+            .s_axis_in_tdata        (int_stage[CIC_N - 1].int_out),
+            .s_axis_in_tvalid       (s_axis_in_tvalid),
+            .m_axis_out_tdata       (ds_out_samp_data),
+            .m_axis_out_tvalid      (ds_out_samp_str)
         );
 end
 /*********************************************************************************************/
@@ -161,7 +170,6 @@ generate
     end
 endgenerate
 /*********************************************************************************************/
-localparam dw_out = B_max - B_calc(2 * CIC_N, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW) + 1;
 reg             signed [OUT_DW-1:0]     comb_out_samp_data_reg;
 reg                                     comb_out_samp_str_reg;
 
