@@ -32,39 +32,6 @@ class Model:
         self.Num_Output_Bits_With_No_Truncation = Num_of_Bits_Growth + self.INP_DW - 1
         print(f"B_max: {self.Num_Output_Bits_With_No_Truncation}")
 
-    # this function is not needed for the model
-    # TODO: outsource it to a separate file
-    def calculate_register_pruning(self, R, N, M, INP_DW, OUT_DW):
-        # calculate register pruning as described in Hogenauer, 1981
-        F_j = np.zeros(2*N + 2)
-        for j in np.arange(2*N,0,-1):
-            h_j = np.zeros((R*M-1)*N + 2*N)
-            if j <= N:
-                for k in np.arange((R*M-1)*N + j - 1):
-                    for L in range(int(np.floor(k/(R*M))) + 1):
-                        h_j[k] += (-1)**L*self.binom(N, L)*self.binom(N - j + k - R*M*L, k - R*M*L)
-            else:
-                for k in np.arange(2*N + 1 - j + 1):
-                    h_j[k] = (-1)**k*self.binom(2*N + 1 - j, k)
-
-            F_j[j] = np.sqrt(np.dot(h_j,h_j))
-
-        F_j[2*N + 1]=1
-
-        self.Num_of_Output_Bits_Truncated = self.Num_Output_Bits_With_No_Truncation - OUT_DW + 1
-        sigma = np.sqrt((2**self.Num_of_Output_Bits_Truncated)**2/12)
-
-        B_j = np.floor(-np.log2(F_j) + np.log2(sigma) + 0.5*math.log2(6/self.N));        
-        out_bits = self.Num_Output_Bits_With_No_Truncation - B_j
-
-        # last items need some special treatment
-        B_j[2*N+1] = self.Num_Output_Bits_With_No_Truncation - OUT_DW + 1
-        out_bits[2*N+1] = OUT_DW
-
-        for j in np.arange(1, 2*N+2):
-            print(f"F_{j} = {F_j[j]}  \t -log_2(F_j) = {-np.log2(F_j[j])} \t B_j = {B_j[j]} \t bits = {out_bits[j]}")            
-        return B_j
-
     def cic_model_stage_get_out(self, stage):
         ret = 0
         # calculate moving sum for a given stage
@@ -119,7 +86,4 @@ class Model:
         cic_B_prune_last_stage = cic_B_scale_out
         cic_S_prune_last_stage = int(1) << int(cic_B_prune_last_stage)
         return self.cic_model_stage_get_out(self.N - 1) // cic_S_prune_last_stage
-
-    def binom(self, n, k):
-        return math.factorial(n) // math.factorial(k) // math.factorial(n - k)
     

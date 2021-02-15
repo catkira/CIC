@@ -102,13 +102,11 @@ tests_dir = os.path.abspath(os.path.dirname(__file__))
 rtl_dir = os.path.abspath(os.path.join(tests_dir, '..', 'hdl'))
 
 def calculate_prune_bits(R, N, M, INP_DW, OUT_DW):
-    tests_dir = os.path.abspath(os.path.dirname(__file__))
-    model_dir = os.path.abspath(os.path.join(tests_dir, '../model/cic_d_model.py'))
-    spec = importlib.util.spec_from_file_location("cic_d_model", model_dir)
+    tools_dir = os.path.abspath(os.path.join(tests_dir, '../tools/calculate_register_pruning.py'))
+    spec = importlib.util.spec_from_file_location("calculate_register_pruning", tools_dir)
     foo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(foo)
-    model = foo.Model(R, N, M, INP_DW, OUT_DW, 0) 
-    B_j = model.calculate_register_pruning(R, N, M, INP_DW, OUT_DW)
+    B_j = foo.calculate_register_pruning(R, N, M, INP_DW, OUT_DW)
     
     ret = 0;
     for i in range(1,2*N+2):
