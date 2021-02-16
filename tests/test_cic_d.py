@@ -102,7 +102,6 @@ async def simple_test(dut):
         assert np.abs(output[i] - output_model[i]) <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"    
     print(f"received {len(output)} samples")
     gen.kill()
-    assert False
     
 @cocotb.test()
 async def variable_rate_test(dut):
