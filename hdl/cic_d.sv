@@ -3,8 +3,9 @@
 module cic_d
 /*********************************************************************************************/
 #(
-    parameter INP_DW = 18,          // input data width
-    parameter OUT_DW = 18,          // output data width
+    parameter INP_DW = 32,          // input data width
+    parameter OUT_DW = 32,          // output data width
+    parameter RATE_DW = 32,          // rate data width
     parameter CIC_R = 10,           // decimation ratio, if VARIABLE_RATE = 1, R has to be set to the maximum decimation ratio
     parameter CIC_N = 7,            // number of stages
     parameter CIC_M = 1,            // delay in comb
@@ -17,7 +18,7 @@ module cic_d
     input                                   reset_n,
     input   wire    signed [INP_DW-1:0]     s_axis_in_tdata,
     input                                   s_axis_in_tvalid,
-    input   wire    signed [INP_DW-1:0]     s_axis_rate_tdata,
+    input   wire    signed [RATE_DW-1:0]     s_axis_rate_tdata,
     input                                   s_axis_rate_tvalid,  
     output  wire    signed [OUT_DW-1:0]     m_axis_out_tdata,
     output                                  m_axis_out_tvalid 

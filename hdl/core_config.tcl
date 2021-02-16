@@ -7,6 +7,7 @@ set_property DESCRIPTION $display_name $core
 
 core_parameter INP_DW {OPERAND WIDTH INPUT} {Width of the data-in-a operands}
 core_parameter OUT_DW {OPERAND WIDTH OUTPUT} {Width of the data-in-b operands}
+core_parameter RATE_DW {OPERAND WIDTH OUTPUT} {Width of the rate operands}
 core_parameter CIC_R  {R} {R - max R if variable rate is used}
 core_parameter CIC_N  {N} {N}
 core_parameter CIC_M  {M} {M}
