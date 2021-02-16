@@ -15,3 +15,4 @@ for i in range(1,2*N+2):
     print(f"B_j[{i}] = {B_j[i]}")
     ret += int(B_j[i])<<(32*(i))
 print(F"pruning parameter = {ret}")
+print(F"pruning parameter in hex = {hex(ret)}")
