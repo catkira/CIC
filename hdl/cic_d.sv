@@ -29,18 +29,17 @@ module cic_d
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
 //reg        [15:0]     current_B_max = B_max;
 //reg        [15:0]     current_dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
-always @(posedge clk or negedge reset_n)
-begin
-    if (!reset_n) begin
-        current_B_max <= B_max;
-        current_dw_out <= B_max - get_prune_bits(2*CIC_N) + 1;
-    end
-    else if (s_axis_rate_tvalid) begin
-        //current_B_max <= clog2_l((s_axis_rate_tdata * CIC_M) ** CIC_N) + INP_DW - 1;
-        current_B_max <= 10;
-        current_dw_out <= clog2_l((s_axis_rate_tdata * CIC_M) ** CIC_N) + INP_DW - 1 - get_prune_bits(2*CIC_N) + 1;
-    end
-end
+// always @(posedge clk or negedge reset_n)
+// begin
+    // if (!reset_n) begin
+        // current_B_max <= B_max;
+        // current_dw_out <= B_max - get_prune_bits(2*CIC_N) + 1;
+    // end
+    // else if (s_axis_rate_tvalid) begin
+        // current_B_max <= 10;
+        // current_dw_out <= clog2_l((s_axis_rate_tdata * CIC_M) ** CIC_N) + INP_DW - 1 - get_prune_bits(2*CIC_N) + 1;
+    // end
+// end
 /*********************************************************************************************/
 
 function integer get_prune_bits(input byte i);
