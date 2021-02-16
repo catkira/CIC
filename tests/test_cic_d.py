@@ -100,7 +100,7 @@ async def simple_test(dut):
     
     for i in range(num_items):
         assert np.abs(output[i] - output_model[i]) <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"    
-    print(f"received {len(output)} samples")
+    #print(f"received {len(output)} samples")
     gen.kill()
     
 @cocotb.test()
