@@ -168,9 +168,10 @@ def calculate_prune_bits(R, N, M, INP_DW, OUT_DW):
 @pytest.mark.parametrize("M", [1, 3])
 @pytest.mark.parametrize("INP_DW", [17])
 @pytest.mark.parametrize("OUT_DW", [14, 17])
+@pytest.mark.parametrize("RATE_DW", [16])
 @pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [0, 1])
 @pytest.mark.parametrize("VARIABLE_RATE", [0])
-def test_cic_d(request, R, N, M, INP_DW, OUT_DW, VARIABLE_RATE, PRECALCULATE_PRUNE_BITS):
+def test_cic_d(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VARIABLE_RATE, PRECALCULATE_PRUNE_BITS):
     dut = "cic_d"
     module = os.path.splitext(os.path.basename(__file__))[0]
     toplevel = dut
@@ -194,6 +195,7 @@ def test_cic_d(request, R, N, M, INP_DW, OUT_DW, VARIABLE_RATE, PRECALCULATE_PRU
     parameters['CIC_N'] = N
     parameters['INP_DW'] = INP_DW
     parameters['OUT_DW'] = OUT_DW
+    parameters['RATE_DW'] = RATE_DW
     parameters['VARIABLE_RATE'] = VARIABLE_RATE
     if PRECALCULATE_PRUNE_BITS:
         parameters['PRUNE_BITS'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
@@ -217,9 +219,10 @@ def test_cic_d(request, R, N, M, INP_DW, OUT_DW, VARIABLE_RATE, PRECALCULATE_PRU
 @pytest.mark.parametrize("M", [1, 3])
 @pytest.mark.parametrize("INP_DW", [17])
 @pytest.mark.parametrize("OUT_DW", [14, 17])
+@pytest.mark.parametrize("RATE_DW", [16])
 @pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [1])
 @pytest.mark.parametrize("VARIABLE_RATE", [1])
-def test_cic_d_variable_rate(request, R, N, M, INP_DW, OUT_DW, VARIABLE_RATE, PRECALCULATE_PRUNE_BITS):
+def test_cic_d_variable_rate(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VARIABLE_RATE, PRECALCULATE_PRUNE_BITS):
     dut = "cic_d"
     module = os.path.splitext(os.path.basename(__file__))[0]
     toplevel = dut
@@ -243,6 +246,7 @@ def test_cic_d_variable_rate(request, R, N, M, INP_DW, OUT_DW, VARIABLE_RATE, PR
     parameters['CIC_N'] = N
     parameters['INP_DW'] = INP_DW
     parameters['OUT_DW'] = OUT_DW
+    parameters['RATE_DW'] = RATE_DW
     parameters['VARIABLE_RATE'] = VARIABLE_RATE
     if PRECALCULATE_PRUNE_BITS:
         parameters['PRUNE_BITS'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
