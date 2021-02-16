@@ -2,8 +2,11 @@ import math
 import numpy as np
 
 
+
 def binom(n, k):
-    return math.factorial(n) // math.factorial(k) // math.factorial(n - k)
+    # using factorial is very slow
+    #return math.factorial(n) // math.factorial(k) // math.factorial(n - k)
+    return math.comb(n,k)
 
 # this function is not needed for the model
 # TODO: outsource it to a separate file
@@ -27,6 +30,7 @@ def calculate_register_pruning(R, N, M, INP_DW, OUT_DW):
         F_j[j] = np.sqrt(np.dot(h_j,h_j))
 
     F_j[2*N + 1]=1
+
 
     Num_of_Output_Bits_Truncated = Num_Output_Bits_With_No_Truncation - OUT_DW + 1
     sigma = np.sqrt((2**Num_of_Output_Bits_Truncated)**2/12)

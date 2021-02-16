@@ -102,6 +102,7 @@ async def simple_test(dut):
         assert np.abs(output[i] - output_model[i]) <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"    
     print(f"received {len(output)} samples")
     gen.kill()
+    assert False
     
 @cocotb.test()
 async def variable_rate_test(dut):
@@ -157,7 +158,7 @@ def calculate_prune_bits(R, N, M, INP_DW, OUT_DW):
     spec.loader.exec_module(foo)
     B_j = foo.calculate_register_pruning(R, N, M, INP_DW, OUT_DW)
     
-    ret = 0;
+    ret = 0
     for i in range(1,2*N+2):
         print(f"B_j[{i}] = {B_j[i]}")
         ret += int(B_j[i])<<(32*(i))

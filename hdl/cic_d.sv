@@ -44,10 +44,12 @@ localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
 
 function integer get_prune_bits(input byte i);
     if (PRUNE_BITS[32*(CIC_N*2+2)-1:0] == 0) begin
+        //$display("get_prune_bits(%d) = %d", i, B_calc(i, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW));
         return B_calc(i, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);
     end
     else begin
         //#$display("stage=%d return %d calculated %d", i, STAGE_WIDTH[32*i +:32], B_calc(i, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW));
+        //$display("get_prune_bits(%d) = %d", i, PRUNE_BITS[32*i +:32]);
         return PRUNE_BITS[32*i +:32];
     end
 endfunction
