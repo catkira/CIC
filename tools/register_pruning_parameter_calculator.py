@@ -16,3 +16,4 @@ for i in range(1,2*N+2):
     ret += int(B_j[i])<<(32*(i))
 print(F"pruning parameter = {ret}")
 print(F"pruning parameter in hex = {hex(ret)}")
+print("Use the hex string to set the PRUNE_BITS parameter of the CIC core")
