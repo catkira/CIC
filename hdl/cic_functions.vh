@@ -20,6 +20,8 @@ function reg unsigned [127 : 0] nchoosek;	///< Binomial coefficient
 	end
 endfunction
  
+ 
+// using $clog2 does not synthesize in vivado 2020.2
 function integer clog2_l;
 	input reg unsigned [127:0] depth;
 	reg unsigned [127:0] i;
@@ -42,7 +44,7 @@ function integer B_max_calc;
 	reg unsigned [127:0] RMpN;
 	begin
 		RMpN = (R * M) ** N;
-		B_max_calc = $clog2(RMpN) + INP_DW - 1;
+		B_max_calc = clog2_l(RMpN) + INP_DW - 1;
 		//$display("B_max_calc: N=%2d, R=%2d, M=%2d, ret=%2d", N, R, M, B_max_calc);
 	end
 endfunction
