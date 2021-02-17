@@ -102,6 +102,22 @@ initial begin
         $display("i downsamp dw %d", ds_dw);
 end
 if (VARIABLE_RATE) begin
+
+    reg [ds_dw-1:0] data_buf;
+    reg             valid_buf;
+    
+    always @(posedge clk or negedge reset_n)
+    begin
+        if (!reset_n) begin
+            data_buf <= 0;
+            valid_buf <= 0;
+        end
+        else if(clk) begin
+            data_buf <= int_stage[CIC_N - 1].int_out* (CIC_R/current_R)**CIC_N;
+            valid_buf <= s_axis_in_tvalid;
+        end
+    end
+
     downsampler_variable #(
             .DATA_WIDTH_INP (ds_dw),
             .DATA_WIDTH_RATE (RATE_DW)
@@ -110,8 +126,10 @@ if (VARIABLE_RATE) begin
         (
             .clk                    (clk),
             .reset_n                (reset_n),
-            .s_axis_in_tdata        (int_stage[CIC_N - 1].int_out* (CIC_R/current_R)**CIC_N),
-            .s_axis_in_tvalid       (s_axis_in_tvalid),
+            //.s_axis_in_tdata        (int_stage[CIC_N - 1].int_out* (CIC_R/current_R)**CIC_N),
+            //.s_axis_in_tvalid       (s_axis_in_tvalid),
+            .s_axis_in_tdata        (data_buf),
+            .s_axis_in_tvalid       (valid_buf),
             .s_axis_rate_tdata      (s_axis_rate_tdata),
             .s_axis_rate_tvalid     (s_axis_rate_tvalid),
             .m_axis_out_tdata       (ds_out_samp_data),
