@@ -183,8 +183,6 @@ if (VARIABLE_RATE) begin
         (
             .clk                    (clk),
             .reset_n                (reset_n),
-            //.s_axis_in_tdata        (int_stage[CIC_N - 1].int_out* (CIC_R/current_R)**CIC_N),
-            //.s_axis_in_tvalid       (s_axis_in_tvalid),
             .s_axis_in_tdata        (data_buf2),
             .s_axis_in_tvalid       (valid_buf2),
             .s_axis_rate_tdata      (s_axis_rate_tdata),
