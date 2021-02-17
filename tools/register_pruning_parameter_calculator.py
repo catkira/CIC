@@ -2,7 +2,7 @@ from calculate_register_pruning import *
 import timeit
 
 N=6
-R=4095
+R=100
 M=1
 start = timeit.default_timer()
 B_j = calculate_register_pruning(R=R, N=N, M=M, INP_DW=32, OUT_DW=32)

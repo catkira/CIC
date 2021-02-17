@@ -100,7 +100,16 @@ class Model:
         return self.data_out_buf_2[self.extra_delay_2]
 
     def get_scaled_data(self):
+        CIC_Filter_Gain = (self.R*self.M)**self.N        
+
+
         cic_B_scale_out = self.Num_Output_Bits_With_No_Truncation + 1 - self.OUT_DW
-        cic_S_prune_last_stage = int(1) << int(cic_B_scale_out)
-        return self.cic_model_stage_get_out(self.N - 1) // cic_S_prune_last_stage
+        cic_S_prune_last_stage = int(1) << int(cic_B_scale_out)        
+        Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
+        Num_Output_Bits_With_No_Truncation_2 = Num_of_Bits_Growth + self.INP_DW - 1
+        cic_S_prune_last_stage_2 = int(1) << int(Num_Output_Bits_With_No_Truncation_2 + 1 - self.OUT_DW)
+
+        #print(F"{self.cic_model_stage_get_out(self.N - 1)} >> {cic_B_scale_out} = {self.cic_model_stage_get_out(self.N - 1) // cic_S_prune_last_stage}")
+        #print(F"- {self.cic_model_stage_get_out(self.N - 1)} >> {Num_Output_Bits_With_No_Truncation_2 + 1 - self.OUT_DW} = {self.cic_model_stage_get_out(self.N - 1) // cic_S_prune_last_stage_2}")
+        return self.cic_model_stage_get_out(self.N - 1) // cic_S_prune_last_stage_2
     
