@@ -28,8 +28,6 @@ module cic_d
 /*********************************************************************************************/
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
-// reg        [15:0]     current_B_max = B_max;
-// reg        [15:0]     current_dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
 reg        [RATE_DW-1:0]     current_R = CIC_R;
 
 always @(posedge clk)
@@ -97,7 +95,20 @@ generate
                     data_buf2 <= data_buf;
                     valid_buf2 <= valid_buf;
                 end
-            end            
+            end   
+            reg [idw_cur-1:0] data_buf3;
+            reg               valid_buf3;
+            always @(posedge clk)
+            begin
+                if (!reset_n) begin
+                    data_buf3 <= 0;
+                    valid_buf3 <= 0;
+                end
+                else if(clk) begin
+                    data_buf3 <= data_buf2;
+                    valid_buf3 <= valid_buf2;
+                end
+            end                 
             integrator #(
                 idw_cur,
                 odw_cur
@@ -105,8 +116,8 @@ generate
                 int_inst(
                 .clk            (clk),
                 .reset_n        (reset_n),
-                .inp_samp_data  (data_buf2),
-                .inp_samp_str   (valid_buf2),
+                .inp_samp_data  (data_buf3),
+                .inp_samp_str   (valid_buf3),
                 .out_samp_data  (int_out)
                 );            
         end
