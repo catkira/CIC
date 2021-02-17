@@ -43,7 +43,7 @@ begin
         current_R <= s_axis_rate_tdata;
         // current_B_max <= 10;
         // current_dw_out <= clog2_l((s_axis_rate_tdata * CIC_M) ** CIC_N) + INP_DW - 1 - get_prune_bits(2*CIC_N) + 1;
-        $display("R=%d, current_dw_out=%d ", s_axis_rate_tdata, clog2_l((s_axis_rate_tdata * CIC_M) ** CIC_N) + INP_DW - 1 - get_prune_bits(2*CIC_N) + 1);
+        // $display("R=%d, current_dw_out=%d ", s_axis_rate_tdata, clog2_l((s_axis_rate_tdata * CIC_M) ** CIC_N) + INP_DW - 1 - get_prune_bits(2*CIC_N) + 1);
     end
 end
 /*********************************************************************************************/
