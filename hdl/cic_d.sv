@@ -157,8 +157,8 @@ if (VARIABLE_RATE) begin
             valid_buf <= 0;
         end
         else if(clk) begin
-            data_buf <= int_stage[CIC_N - 1].int_out * (CIC_R/current_R);
-            //data_buf <= int_stage[CIC_N - 1].int_out;
+            //data_buf <= int_stage[CIC_N - 1].int_out * (CIC_R/current_R);
+            data_buf <= int_stage[CIC_N - 1].int_out;
             valid_buf <= s_axis_in_tvalid;
         end
     end
@@ -265,61 +265,6 @@ always @(negedge reset_n or posedge clk)
 assign m_axis_out_tdata      = comb_out_samp_data_reg;
 assign m_axis_out_tvalid     = comb_out_samp_str_reg;
 /*********************************************************************************************/
-
-task print_parameters_nice;
-    integer tot_registers;
-    integer j;
-    integer B_2Np1;
-    integer dw_j;
-    integer B_j;
-    reg [127:0] h_f0_pre;
-    integer log2_h_f0_pre;
-    integer h_f0_pre_limit_prec;
-    integer h_f0_pre_divider;
-    integer h_f0_divider_exp;
-    integer h_f0_x_mul;
-    integer x_multiplier;
-    reg [127:0] F_sq_curr;
-    x_multiplier = 100000;
-    B_2Np1 = B_max - dw_out + 1;
-    h_f0_pre = (CIC_R*CIC_M)**CIC_N;
-    h_f0_divider_exp = (B_2Np1 + 1);
-    h_f0_pre_limit_prec = 30;
-    log2_h_f0_pre = $clog2(h_f0_pre);
-    if (log2_h_f0_pre > h_f0_pre_limit_prec) begin
-        //$display(" log2_h_f0_pre = %2d, lim %2d", log2_h_f0_pre, h_f0_pre_limit_prec);
-        h_f0_pre_divider = log2_h_f0_pre - h_f0_pre_limit_prec;
-        //$display(" h_f0_pre_divider = %2d", h_f0_pre_divider);
-        h_f0_pre = h_f0_pre >> h_f0_pre_divider;
-        h_f0_divider_exp = h_f0_divider_exp - h_f0_pre_divider;
-        //$display(" log2_h_f0_pre limited = %2d, divider_exp limited %2d", log2_h_f0_pre, h_f0_divider_exp);
-        h_f0_x_mul = x_multiplier * h_f0_pre / 2**(h_f0_divider_exp);
-    end
-    else begin
-            h_f0_x_mul = x_multiplier * h_f0_pre / 2**(B_2Np1 + 1);
-    end
-    $display("CIC inp_dw   %d", INP_DW);
-    $display("CIC out_dw   %d", OUT_DW);
-    $display("CIC B_max    %d", B_max);
-    $display("CIC B_out    %d", dw_out);
-    $display("CIC B_2Np1   %d", B_2Np1);
-    $display("CIC h(f=0)   %1d.%1d", h_f0_x_mul / x_multiplier, h_f0_x_mul % x_multiplier);
-    $display(" clog2_l((r*m)**n)  %d", $clog2((CIC_R*CIC_M)**CIC_N)); 
-    tot_registers = 0;
-    for (j = 1; j < 2 * CIC_N + 2; j = j + 1) begin : check_Bj
-        F_sq_curr = F_sq_calc(j, CIC_N, CIC_R, CIC_M);
-        B_j = get_prune_bits(j);
-        dw_j = B_max - B_j + 1;
-        tot_registers = tot_registers + dw_j;
-    end
-    $display("CIC total registers %2d", tot_registers);
-endtask
-
-generate
-    initial begin : initial_print_parameters
-        print_parameters_nice;
-    end
-endgenerate
 
 `ifdef COCOTB_SIM
 initial begin
