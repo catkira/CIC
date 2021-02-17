@@ -131,24 +131,24 @@ initial begin
 end
 if (VARIABLE_RATE) begin
 
-    reg [ds_dw-1:0] data_buf;
-    reg             valid_buf;
-    reg [ds_dw-1:0] data_buf2;
-    reg             valid_buf2;
+    localparam PIPELINE_STAGES = 3;
+    reg [ds_dw-1:0] data_buf[0:PIPELINE_STAGES-1];
+    reg  [0:PIPELINE_STAGES-1]        valid_buf;
     
     always @(posedge clk)
     begin
-        if (!reset_n) begin
-            valid_buf <= 0;
-            valid_buf2 <= 0;
+        if(!reset_n) begin
+            valid_buf = {PIPELINE_STAGES{1'b0}};
         end
         else begin
-            data_buf <= int_stage[CIC_N - 1].int_out * (CIC_R/current_R);
-            data_buf2 <= data_buf;
-            valid_buf <= s_axis_in_tvalid;
-            valid_buf2 <= valid_buf;
+            data_buf[0] <= int_stage[CIC_N - 1].int_out * (CIC_R / current_R);
+            valid_buf[0] <= s_axis_in_tvalid;
+            for (reg [$clog2(PIPELINE_STAGES):0] j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
+                data_buf[j+1] <= data_buf[j];
+                valid_buf[j+1] <= valid_buf[j];
+            end                 
         end
-    end
+    end       
 
     downsampler_variable #(
             .DATA_WIDTH_INP (ds_dw),
@@ -158,8 +158,8 @@ if (VARIABLE_RATE) begin
         (
             .clk                    (clk),
             .reset_n                (reset_n),
-            .s_axis_in_tdata        (data_buf2),
-            .s_axis_in_tvalid       (valid_buf2),
+            .s_axis_in_tdata        (data_buf[PIPELINE_STAGES-1]),
+            .s_axis_in_tvalid       (valid_buf[PIPELINE_STAGES-1]),
             .s_axis_rate_tdata      (s_axis_rate_tdata),
             .s_axis_rate_tvalid     (s_axis_rate_tvalid),
             .m_axis_out_tdata       (ds_out_samp_data),
