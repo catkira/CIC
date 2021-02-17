@@ -73,17 +73,45 @@ generate
         else            assign int_in = int_stage[i - 1].int_out;       ///< otherwise, takes data from the previous stage of the filter
         wire signed [odw_cur - 1 : 0] int_out;
         
-        integrator #(
-            idw_cur,
-            odw_cur
-            )
-            int_inst(
-            .clk            (clk),
-            .reset_n        (reset_n),
-            .inp_samp_data  (int_in),
-            .inp_samp_str   (s_axis_in_tvalid),
-            .out_samp_data  (int_out)
-            );
+        if (VARIABLE_RATE) begin
+            reg [idw_cur-1:0] data_buf;
+            reg               valid_buf;
+            always @(posedge clk or negedge reset_n)
+            begin
+                if (!reset_n) begin
+                    data_buf <= 0;
+                    valid_buf <= 0;
+                end
+                else if(clk) begin
+                    data_buf <= int_in;
+                    valid_buf <= s_axis_in_tvalid;
+                end
+            end            
+            integrator #(
+                idw_cur,
+                odw_cur
+                )
+                int_inst(
+                .clk            (clk),
+                .reset_n        (reset_n),
+                .inp_samp_data  (data_buf),
+                .inp_samp_str   (valid_buf),
+                .out_samp_data  (int_out)
+                );            
+        end
+        else begin        
+            integrator #(
+                idw_cur,
+                odw_cur
+                )
+                int_inst(
+                .clk            (clk),
+                .reset_n        (reset_n),
+                .inp_samp_data  (int_in),
+                .inp_samp_str   (s_axis_in_tvalid),
+                .out_samp_data  (int_out)
+                );
+        end       
         initial begin
             //$display("i:%d integ idw=%2d odw=%2d  B(%2d, %3d, %2d, %2d, %2d, %2d)=%2d, Bj-1=%2d, F_sq=%8d", i, idw_cur, odw_cur, i + 1, CIC_R, CIC_M, CIC_N, INP_DW, OUT_DW, B_j, B_jm1, F_sq_j);
             $display("i:%d integ idw=%d ", i, idw_cur);

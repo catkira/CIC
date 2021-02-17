@@ -17,7 +17,7 @@ class Model:
         self.cic_push_ptr = 0
         self.data_in_buf = 0
         
-        self.extra_delay = 0         # extra delay before downsampler
+        self.extra_delay = self.N+1         # extra delay before downsampler
         self.extra_delay_2 = 4 + (self.N-1)*2     # extra delay after downsampler
             
         self.data_out_buf = np.zeros(self.extra_delay+1)
