@@ -67,12 +67,13 @@ generate
         wire signed [odw_cur - 1 : 0] int_out;
         
         if (VARIABLE_RATE) begin
-            reg [idw_cur-1:0] data_buf[0:2];
-            reg  [0:2]        valid_buf;
+            localparam PIPELINE_STAGES = 3;
+            reg [idw_cur-1:0] data_buf[0:PIPELINE_STAGES-1];
+            reg  [0:PIPELINE_STAGES-1]        valid_buf;
             always @(posedge clk)
             begin
                 if(!reset_n) begin
-                    valid_buf = {1'b0,1'b0,1'b0};
+                    valid_buf = {PIPELINE_STAGES{1'b0}};
                 end
                 else begin
                     if (i == 0)
@@ -80,7 +81,7 @@ generate
                     else
                         data_buf[0] <= int_in * (CIC_R / current_R);
                     valid_buf[0] <= s_axis_in_tvalid;
-                    for (reg [7:0] j = 0; j < 2; j = j + 1) begin 
+                    for (reg [$clog2(PIPELINE_STAGES):0] j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
                         data_buf[j+1] <= data_buf[j];
                         valid_buf[j+1] <= valid_buf[j];
                     end                 
@@ -93,8 +94,8 @@ generate
                 int_inst(
                 .clk            (clk),
                 .reset_n        (reset_n),
-                .inp_samp_data  (data_buf[2]),
-                .inp_samp_str   (valid_buf[2]),
+                .inp_samp_data  (data_buf[PIPELINE_STAGES-1]),
+                .inp_samp_str   (valid_buf[PIPELINE_STAGES-1]),
                 .out_samp_data  (int_out)
                 );            
         end
@@ -132,31 +133,22 @@ if (VARIABLE_RATE) begin
 
     reg [ds_dw-1:0] data_buf;
     reg             valid_buf;
+    reg [ds_dw-1:0] data_buf2;
+    reg             valid_buf2;
     
     always @(posedge clk)
     begin
         if (!reset_n) begin
-            data_buf <= 0;
             valid_buf <= 0;
+            valid_buf2 <= 0;
         end
         else begin
             data_buf <= int_stage[CIC_N - 1].int_out * (CIC_R/current_R);
-            valid_buf <= s_axis_in_tvalid;
-        end
-    end
-    reg [ds_dw-1:0] data_buf2;
-    reg               valid_buf2;
-    always @(posedge clk)
-    begin
-        if (!reset_n) begin
-            data_buf2 <= 0;
-            valid_buf2 <= 0;
-        end
-        else if(clk) begin
             data_buf2 <= data_buf;
+            valid_buf <= s_axis_in_tvalid;
             valid_buf2 <= valid_buf;
         end
-    end  
+    end
 
     downsampler_variable #(
             .DATA_WIDTH_INP (ds_dw),
