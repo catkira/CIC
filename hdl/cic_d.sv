@@ -26,7 +26,7 @@ module cic_d
 /*********************************************************************************************/
 `include "cic_functions.vh"
 /*********************************************************************************************/
-localparam      B_max = $clog2((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
+localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
 // reg        [15:0]     current_B_max = B_max;
 // reg        [15:0]     current_dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
@@ -157,11 +157,23 @@ if (VARIABLE_RATE) begin
             valid_buf <= 0;
         end
         else if(clk) begin
-            //data_buf <= int_stage[CIC_N - 1].int_out * (CIC_R/current_R);
-            data_buf <= int_stage[CIC_N - 1].int_out;
+            data_buf <= int_stage[CIC_N - 1].int_out * (CIC_R/current_R);
             valid_buf <= s_axis_in_tvalid;
         end
     end
+    reg [ds_dw-1:0] data_buf2;
+    reg               valid_buf2;
+    always @(posedge clk or negedge reset_n)
+    begin
+        if (!reset_n) begin
+            data_buf2 <= 0;
+            valid_buf2 <= 0;
+        end
+        else if(clk) begin
+            data_buf2 <= data_buf;
+            valid_buf2 <= valid_buf;
+        end
+    end  
 
     downsampler_variable #(
             .DATA_WIDTH_INP (ds_dw),
@@ -173,8 +185,8 @@ if (VARIABLE_RATE) begin
             .reset_n                (reset_n),
             //.s_axis_in_tdata        (int_stage[CIC_N - 1].int_out* (CIC_R/current_R)**CIC_N),
             //.s_axis_in_tvalid       (s_axis_in_tvalid),
-            .s_axis_in_tdata        (data_buf),
-            .s_axis_in_tvalid       (valid_buf),
+            .s_axis_in_tdata        (data_buf2),
+            .s_axis_in_tvalid       (valid_buf2),
             .s_axis_rate_tdata      (s_axis_rate_tdata),
             .s_axis_rate_tvalid     (s_axis_rate_tvalid),
             .m_axis_out_tdata       (ds_out_samp_data),

@@ -20,19 +20,19 @@ function reg unsigned [127 : 0] nchoosek;	///< Binomial coefficient
 	end
 endfunction
  
-// function integer clog2_l;
-	// input reg unsigned [127:0] depth;
-	// reg unsigned [127:0] i;
-	// begin
-		// clog2_l = 0;
-		// if (depth > 0) begin
-			// i = depth - 1;	// with "- 1" clog2(2^N) will be N, not N + 1
-			// for(clog2_l = 0; i > 0; clog2_l = clog2_l + 1)
-				// i = i >> 1;
-		// end else
-			// clog2_l = -1;
-	// end
-// endfunction
+function integer clog2_l;
+	input reg unsigned [127:0] depth;
+	reg unsigned [127:0] i;
+	begin
+		clog2_l = 0;
+		if (depth > 0) begin
+			i = depth - 1;	// with "- 1" clog2(2^N) will be N, not N + 1
+			for(clog2_l = 0; i > 0; clog2_l = clog2_l + 1)
+				i = i >> 1;
+		end else
+			clog2_l = -1;
+	end
+endfunction
  
 function integer B_max_calc;
 	input integer N;
