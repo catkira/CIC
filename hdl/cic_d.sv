@@ -70,7 +70,7 @@ generate
         
         wire signed [idw_cur - 1 : 0] int_in;           ///< input data bus
         if ( i == 0 )   assign int_in = s_axis_in_tdata;                  ///< if it is the first stage, then takes data from input of CIC filter
-        else            assign int_in = int_stage[i - 1].int_out* (CIC_R/current_R);       ///< otherwise, takes data from the previous stage of the filter
+        else            assign int_in = int_stage[i - 1].int_out;       ///< otherwise, takes data from the previous stage of the filter
         wire signed [odw_cur - 1 : 0] int_out;
         
         integrator #(
@@ -110,7 +110,7 @@ if (VARIABLE_RATE) begin
         (
             .clk                    (clk),
             .reset_n                (reset_n),
-            .s_axis_in_tdata        (int_stage[CIC_N - 1].int_out* (CIC_R/current_R)),
+            .s_axis_in_tdata        (int_stage[CIC_N - 1].int_out* (CIC_R/current_R)**CIC_N),
             .s_axis_in_tvalid       (s_axis_in_tvalid),
             .s_axis_rate_tdata      (s_axis_rate_tdata),
             .s_axis_rate_tvalid     (s_axis_rate_tvalid),
