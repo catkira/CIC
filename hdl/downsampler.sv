@@ -20,21 +20,21 @@ localparam DECIM_COUNTER_WIDTH = $clog2(CIC_R);
 reg [DECIM_COUNTER_WIDTH - 1 : 0] counter;
 /*********************************************************************************************/
 // decimation counter
-always @(posedge clk or negedge reset_n)
+always @(posedge clk)
 begin
     if (!reset_n)           counter <= '0;
     else if (s_axis_in_tvalid)  counter <= (counter < CIC_R - 1) ? counter + {{(DECIM_COUNTER_WIDTH - 1){1'b0}}, 1'b1} : '0;
 end
 /*********************************************************************************************/
 // output register
-always @(posedge clk or negedge reset_n)
+always @(posedge clk)
 begin
     if (!reset_n)           m_axis_out_tdata <= '0;
     else if (s_axis_in_tvalid)  m_axis_out_tdata <= (counter < CIC_R - 1) ? m_axis_out_tdata : s_axis_in_tdata;
 end
 /*********************************************************************************************/
 // data valid register
-always @(posedge clk or negedge reset_n)
+always @(posedge clk)
 begin
     if (!reset_n)           m_axis_out_tvalid <= 1'b0;
     else if (s_axis_in_tvalid)  m_axis_out_tvalid <= (counter == CIC_R - 1);

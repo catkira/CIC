@@ -32,7 +32,7 @@ localparam      dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
 // reg        [15:0]     current_dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
 reg        [RATE_DW-1:0]     current_R = CIC_R;
 
-always @(posedge clk or negedge reset_n)
+always @(posedge clk)
 begin
     if (!reset_n) begin
         // current_B_max <= B_max;
@@ -76,7 +76,7 @@ generate
         if (VARIABLE_RATE) begin
             reg [idw_cur-1:0] data_buf;
             reg               valid_buf;
-            always @(posedge clk or negedge reset_n)
+            always @(posedge clk)
             begin
                 if (!reset_n) begin
                     data_buf <= 0;
@@ -92,7 +92,7 @@ generate
             end            
             reg [idw_cur-1:0] data_buf2;
             reg               valid_buf2;
-            always @(posedge clk or negedge reset_n)
+            always @(posedge clk)
             begin
                 if (!reset_n) begin
                     data_buf2 <= 0;
@@ -150,20 +150,20 @@ if (VARIABLE_RATE) begin
     reg [ds_dw-1:0] data_buf;
     reg             valid_buf;
     
-    always @(posedge clk or negedge reset_n)
+    always @(posedge clk)
     begin
         if (!reset_n) begin
             data_buf <= 0;
             valid_buf <= 0;
         end
-        else if(clk) begin
+        else begin
             data_buf <= int_stage[CIC_N - 1].int_out * (CIC_R/current_R);
             valid_buf <= s_axis_in_tvalid;
         end
     end
     reg [ds_dw-1:0] data_buf2;
     reg               valid_buf2;
-    always @(posedge clk or negedge reset_n)
+    always @(posedge clk)
     begin
         if (!reset_n) begin
             data_buf2 <= 0;
@@ -253,7 +253,7 @@ endgenerate
 reg             signed [OUT_DW-1:0]     comb_out_samp_data_reg;
 reg                                     comb_out_samp_str_reg;
 
-always @(negedge reset_n or posedge clk)
+always @(posedge clk)
 begin
     if      (~reset_n)                      comb_out_samp_data_reg <= '0;
     else if (comb_chain_out_str) begin
@@ -268,7 +268,7 @@ begin
     end
 end
 
-always @(negedge reset_n or posedge clk)
+always @(posedge clk)
     if      (~reset_n)                      comb_out_samp_str_reg <= '0;
     else                                    comb_out_samp_str_reg <= comb_chain_out_str;
 

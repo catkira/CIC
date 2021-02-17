@@ -15,7 +15,7 @@ localparam SUMMER_WIDTH = DATA_WIDTH_INP > DATA_WIDTH_OUT ? DATA_WIDTH_INP : DAT
 wire    signed  [SUMMER_WIDTH - 1:0]    sum;
 reg     signed  [SUMMER_WIDTH - 1:0]    acc_reg;
 assign #4       sum = acc_reg + inp_samp_data;  // delay for 18x18 multiplier of Cyclone V SE is 3.4 ns
-always @(posedge clk or negedge reset_n)
+always @(posedge clk)
 begin
     if              (!reset_n)      acc_reg <= '0;
     else    if      (inp_samp_str)  acc_reg <= sum;

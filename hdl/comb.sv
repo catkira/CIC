@@ -32,14 +32,14 @@ wire                                            data_reg_push_str;              
 reg             samp_out_str_reg;
 reg signed      [SAMP_WIDTH - 1 : 0]    data_out_reg;
 assign data_reg_push_str = samp_inp_str;
-always @(posedge clk or negedge reset_n)
+always @(posedge clk)
 begin
     if (!reset_n)           data_out_reg <= '0;
     else if (samp_inp_str)  data_out_reg <= samp_inp_data - data_reg[CIC_M - 1];
 end
 
 assign samp_out_data = data_out_reg;
-always @(posedge clk or negedge reset_n)
+always @(posedge clk)
 begin
     if (!reset_n)           samp_out_str_reg <= '0;
     else                    samp_out_str_reg <= samp_inp_str;
@@ -50,7 +50,7 @@ assign samp_out_str = samp_out_str_reg;
 
 /*********************************************************************************************/
 // FIFO register with reset
-always @(posedge clk or negedge reset_n)
+always @(posedge clk)
 begin
     if (!reset_n)      for (i = 0; i < CIC_M; i = i + 1)       data_reg[i] <= '0;
     else if (data_reg_push_str) begin

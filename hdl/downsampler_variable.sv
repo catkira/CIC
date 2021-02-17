@@ -21,28 +21,28 @@ module downsampler_variable
 reg [DATA_WIDTH_RATE - 1 : 0] counter;
 reg [DATA_WIDTH_RATE - 1 : 0] rate_buf;
 /*********************************************************************************************/
-always @(posedge clk or negedge reset_n)
+always @(posedge clk)
 begin
     if (!reset_n)           rate_buf <= '1;
     else if (s_axis_rate_tvalid)  rate_buf <= s_axis_rate_tdata;
 end
 /*********************************************************************************************/
 // decimation counter
-always @(posedge clk or negedge reset_n)
+always @(posedge clk)
 begin
     if (!reset_n || s_axis_rate_tvalid)           counter <= '0;
     else if (s_axis_in_tvalid)  counter <= (counter < rate_buf - 1) ? counter + {{(DATA_WIDTH_RATE - 1){1'b0}}, 1'b1} : '0;
 end
 /*********************************************************************************************/
 // output register
-always @(posedge clk or negedge reset_n)
+always @(posedge clk)
 begin
     if (!reset_n || s_axis_rate_tvalid)           m_axis_out_tdata <= '0;
     else if (s_axis_in_tvalid)  m_axis_out_tdata <= (counter < rate_buf - 1) ? m_axis_out_tdata : s_axis_in_tdata;
 end
 /*********************************************************************************************/
 // data valid register
-always @(posedge clk or negedge reset_n)
+always @(posedge clk)
 begin
     if (!reset_n || s_axis_rate_tvalid)           m_axis_out_tvalid <= 1'b0;
     else if (s_axis_in_tvalid)  m_axis_out_tvalid <= (counter == rate_buf - 1);
