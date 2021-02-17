@@ -83,7 +83,10 @@ generate
                     valid_buf <= 0;
                 end
                 else if(clk) begin
-                    data_buf <= int_in;
+                    if (i == 0)
+                        data_buf <= int_in;
+                    else
+                        data_buf <= int_in * (CIC_R/current_R);
                     valid_buf <= s_axis_in_tvalid;
                 end
             end            
@@ -141,7 +144,7 @@ if (VARIABLE_RATE) begin
             valid_buf <= 0;
         end
         else if(clk) begin
-            data_buf <= int_stage[CIC_N - 1].int_out* (CIC_R/current_R)**CIC_N;
+            data_buf <= int_stage[CIC_N - 1].int_out * (CIC_R/current_R);
             valid_buf <= s_axis_in_tvalid;
         end
     end
