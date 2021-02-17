@@ -20,19 +20,19 @@ function reg unsigned [127 : 0] nchoosek;	///< Binomial coefficient
 	end
 endfunction
  
-function integer clog2_l;
-	input reg unsigned [127:0] depth;
-	reg unsigned [127:0] i;
-	begin
-		clog2_l = 0;
-		if (depth > 0) begin
-			i = depth - 1;	// with "- 1" clog2(2^N) will be N, not N + 1
-			for(clog2_l = 0; i > 0; clog2_l = clog2_l + 1)
-				i = i >> 1;
-		end else
-			clog2_l = -1;
-	end
-endfunction
+// function integer clog2_l;
+	// input reg unsigned [127:0] depth;
+	// reg unsigned [127:0] i;
+	// begin
+		// clog2_l = 0;
+		// if (depth > 0) begin
+			// i = depth - 1;	// with "- 1" clog2(2^N) will be N, not N + 1
+			// for(clog2_l = 0; i > 0; clog2_l = clog2_l + 1)
+				// i = i >> 1;
+		// end else
+			// clog2_l = -1;
+	// end
+// endfunction
  
 function integer B_max_calc;
 	input integer N;
@@ -42,7 +42,7 @@ function integer B_max_calc;
 	reg unsigned [127:0] RMpN;
 	begin
 		RMpN = (R * M) ** N;
-		B_max_calc = clog2_l(RMpN) + INP_DW - 1;
+		B_max_calc = $clog2(RMpN) + INP_DW - 1;
 		//$display("B_max_calc: N=%2d, R=%2d, M=%2d, ret=%2d", N, R, M, B_max_calc);
 	end
 endfunction

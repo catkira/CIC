@@ -26,7 +26,7 @@ module cic_d
 /*********************************************************************************************/
 `include "cic_functions.vh"
 /*********************************************************************************************/
-localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
+localparam      B_max = $clog2((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
 // reg        [15:0]     current_B_max = B_max;
 // reg        [15:0]     current_dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
