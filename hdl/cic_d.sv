@@ -86,8 +86,21 @@ generate
                     if (i == 0)
                         data_buf <= int_in;
                     else
-                        data_buf <= int_in * (CIC_R/current_R);
+                        data_buf <= int_in * (CIC_R / current_R);
                     valid_buf <= s_axis_in_tvalid;
+                end
+            end            
+            reg [idw_cur-1:0] data_buf2;
+            reg               valid_buf2;
+            always @(posedge clk or negedge reset_n)
+            begin
+                if (!reset_n) begin
+                    data_buf2 <= 0;
+                    valid_buf2 <= 0;
+                end
+                else if(clk) begin
+                    data_buf2 <= data_buf;
+                    valid_buf2 <= valid_buf;
                 end
             end            
             integrator #(
@@ -97,8 +110,8 @@ generate
                 int_inst(
                 .clk            (clk),
                 .reset_n        (reset_n),
-                .inp_samp_data  (data_buf),
-                .inp_samp_str   (valid_buf),
+                .inp_samp_data  (data_buf2),
+                .inp_samp_str   (valid_buf2),
                 .out_samp_data  (int_out)
                 );            
         end
@@ -144,7 +157,8 @@ if (VARIABLE_RATE) begin
             valid_buf <= 0;
         end
         else if(clk) begin
-            data_buf <= int_stage[CIC_N - 1].int_out * (CIC_R/current_R);
+            //data_buf <= int_stage[CIC_N - 1].int_out * (CIC_R/current_R);
+            data_buf <= int_stage[CIC_N - 1].int_out;
             valid_buf <= s_axis_in_tvalid;
         end
     end
