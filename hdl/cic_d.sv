@@ -157,8 +157,8 @@ if (VARIABLE_RATE) begin
             valid_buf <= 0;
         end
         else if(clk) begin
-            //data_buf <= int_stage[CIC_N - 1].int_out * (CIC_R/current_R);
-            data_buf <= int_stage[CIC_N - 1].int_out;
+            data_buf <= int_stage[CIC_N - 1].int_out * (CIC_R/current_R);
+            //data_buf <= int_stage[CIC_N - 1].int_out;
             valid_buf <= s_axis_in_tvalid;
         end
     end
@@ -285,7 +285,7 @@ task print_parameters_nice;
     h_f0_pre = (CIC_R*CIC_M)**CIC_N;
     h_f0_divider_exp = (B_2Np1 + 1);
     h_f0_pre_limit_prec = 30;
-    log2_h_f0_pre = clog2_l(h_f0_pre);
+    log2_h_f0_pre = $clog2(h_f0_pre);
     if (log2_h_f0_pre > h_f0_pre_limit_prec) begin
         //$display(" log2_h_f0_pre = %2d, lim %2d", log2_h_f0_pre, h_f0_pre_limit_prec);
         h_f0_pre_divider = log2_h_f0_pre - h_f0_pre_limit_prec;
@@ -304,7 +304,7 @@ task print_parameters_nice;
     $display("CIC B_out    %d", dw_out);
     $display("CIC B_2Np1   %d", B_2Np1);
     $display("CIC h(f=0)   %1d.%1d", h_f0_x_mul / x_multiplier, h_f0_x_mul % x_multiplier);
-    $display(" clog2_l((r*m)**n)  %d", clog2_l((CIC_R*CIC_M)**CIC_N)); 
+    $display(" clog2_l((r*m)**n)  %d", $clog2((CIC_R*CIC_M)**CIC_N)); 
     tot_registers = 0;
     for (j = 1; j < 2 * CIC_N + 2; j = j + 1) begin : check_Bj
         F_sq_curr = F_sq_calc(j, CIC_N, CIC_R, CIC_M);
