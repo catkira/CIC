@@ -56,14 +56,14 @@ function integer get_prune_bits(input byte i);
     end
 endfunction
 
-typedef bit signed [$clog2(CIC_R)-1:0] LUT_t [1:CIC_R];
+typedef bit unsigned [$clog2(CIC_R)-1:0] LUT_t [1:CIC_R]; // possible rates are 1..CIC_R
 LUT_t LUT;
 
 integer k;
 initial begin
-    for(k=1;k<CIC_R+1;k=k+1) begin
+    foreach (LUT[k]) begin
         LUT[k] = CIC_R/k;  // rounds down
-        //$display("LUT[%d] = %d", k, LUT[k]);
+        $display("LUT[%d] = %d", k, LUT[k]);
     end
 end
 
