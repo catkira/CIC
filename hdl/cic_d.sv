@@ -53,6 +53,17 @@ function integer get_prune_bits(input byte i);
     end
 endfunction
 
+typedef bit signed [$clog2(CIC_R):0] LUT_t [0:CIC_R];
+LUT_t LUT;
+
+integer k;
+initial begin
+    for(k=0;k<CIC_R+1;k=k+1) begin
+        LUT[k] = CIC_R/k;
+        //$display("LUT[%d] = %d", k, LUT[k]);
+    end
+end
+
 genvar  i;
 generate
     for (i = 0; i < CIC_N; i = i + 1) begin : int_stage
@@ -79,7 +90,8 @@ generate
                     if (i == 0)
                         data_buf[0] <= int_in;
                     else
-                        data_buf[0] <= int_in * (CIC_R / current_R);
+                        // data_buf[0] <= int_in * (CIC_R / current_R);
+                        data_buf[0] <= int_in * LUT[current_R];
                     valid_buf[0] <= s_axis_in_tvalid;
                     for (reg [$clog2(PIPELINE_STAGES):0] j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
                         data_buf[j+1] <= data_buf[j];
@@ -141,7 +153,7 @@ if (VARIABLE_RATE) begin
             valid_buf = {PIPELINE_STAGES{1'b0}};
         end
         else begin
-            data_buf[0] <= int_stage[CIC_N - 1].int_out * (CIC_R / current_R);
+            data_buf[0] <= int_stage[CIC_N - 1].int_out * LUT[current_R];
             valid_buf[0] <= s_axis_in_tvalid;
             for (reg [$clog2(PIPELINE_STAGES):0] j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
                 data_buf[j+1] <= data_buf[j];
