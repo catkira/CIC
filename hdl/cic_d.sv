@@ -29,14 +29,17 @@ module cic_d
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
 reg        [RATE_DW-1:0]     current_R = CIC_R;
+reg        [$clog2(CIC_R)-1:0]     current_scaling_factor = 0;
 
 always @(posedge clk)
 begin
     if (!reset_n) begin
         current_R <= CIC_R;
+        current_scaling_factor <= 0;
     end
     else if (s_axis_rate_tvalid) begin
         current_R <= s_axis_rate_tdata;
+        current_scaling_factor <= LUT[s_axis_rate_tdata];
     end
 end
 /*********************************************************************************************/
@@ -53,13 +56,13 @@ function integer get_prune_bits(input byte i);
     end
 endfunction
 
-typedef bit signed [$clog2(CIC_R):0] LUT_t [0:CIC_R];
+typedef bit signed [$clog2(CIC_R)-1:0] LUT_t [1:CIC_R];
 LUT_t LUT;
 
 integer k;
 initial begin
-    for(k=0;k<CIC_R+1;k=k+1) begin
-        LUT[k] = CIC_R/k;
+    for(k=1;k<CIC_R+1;k=k+1) begin
+        LUT[k] = CIC_R/k;  // rounds down
         //$display("LUT[%d] = %d", k, LUT[k]);
     end
 end
@@ -91,7 +94,7 @@ generate
                         data_buf[0] <= int_in;
                     else
                         // data_buf[0] <= int_in * (CIC_R / current_R);
-                        data_buf[0] <= int_in * LUT[current_R];
+                        data_buf[0] <= int_in * current_scaling_factor;
                     valid_buf[0] <= s_axis_in_tvalid;
                     for (reg [$clog2(PIPELINE_STAGES):0] j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
                         data_buf[j+1] <= data_buf[j];
@@ -153,7 +156,7 @@ if (VARIABLE_RATE) begin
             valid_buf = {PIPELINE_STAGES{1'b0}};
         end
         else begin
-            data_buf[0] <= int_stage[CIC_N - 1].int_out * LUT[current_R];
+            data_buf[0] <= int_stage[CIC_N - 1].int_out * current_scaling_factor;
             valid_buf[0] <= s_axis_in_tvalid;
             for (reg [$clog2(PIPELINE_STAGES):0] j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
                 data_buf[j+1] <= data_buf[j];
