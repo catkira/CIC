@@ -90,7 +90,7 @@ generate
                     valid_buf = {PIPELINE_STAGES{1'b0}};
                 end
                 else begin
-                    if(j==0)
+                    if(i==0)
                         data_buf[0] <= int_in;
                     else
                         data_buf[0] <= int_in * current_scaling_factor;
