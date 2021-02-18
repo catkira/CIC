@@ -28,17 +28,17 @@ module cic_d
 /*********************************************************************************************/
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
-reg        [RATE_DW-1:0]     current_R = CIC_R;
+//reg        [RATE_DW-1:0]           current_R = CIC_R;
 reg        [$clog2(CIC_R)-1:0]     current_scaling_factor = 0;
 
 always @(posedge clk)
 begin
     if (!reset_n) begin
-        current_R <= CIC_R;
+        // current_R <= CIC_R;
         current_scaling_factor <= 0;
     end
     else if (s_axis_rate_tvalid) begin
-        current_R <= s_axis_rate_tdata;
+        // current_R <= s_axis_rate_tdata;
         current_scaling_factor <= LUT[s_axis_rate_tdata];
     end
 end
@@ -88,6 +88,8 @@ generate
             begin
                 if(!reset_n) begin
                     valid_buf = {PIPELINE_STAGES{1'b0}};
+                    foreach(data_buf[j])
+                        data_buf[j] = 0;
                 end
                 else begin
                     if(i==0)
@@ -96,11 +98,8 @@ generate
                         data_buf[0] <= int_in * current_scaling_factor;
 
                     valid_buf[0] <= s_axis_in_tvalid;
-                    for (reg [$clog2(PIPELINE_STAGES):0] j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
-                        if (i != 0 && j == 1)
-                            data_buf[j+1] <= data_buf[j];
-                        else
-                            data_buf[j+1] <= data_buf[j];
+                    for (integer j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
+                        data_buf[j+1] <= data_buf[j];
                         valid_buf[j+1] <= valid_buf[j];
                     end                 
                 end
@@ -157,15 +156,14 @@ if (VARIABLE_RATE) begin
     begin
         if(!reset_n) begin
             valid_buf = {PIPELINE_STAGES{1'b0}};
+            foreach(data_buf[j])
+                data_buf[j] = 0;
         end
         else begin
             data_buf[0] <= int_stage[CIC_N - 1].int_out * current_scaling_factor;
             valid_buf[0] <= s_axis_in_tvalid;
-            for (reg [$clog2(PIPELINE_STAGES):0] j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
-                if(j==1)
-                    data_buf[j+1] <= data_buf[j] ;
-                else
-                    data_buf[j+1] <= data_buf[j];
+            for (integer j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
+                data_buf[j+1] <= data_buf[j];
                 valid_buf[j+1] <= valid_buf[j];
             end                 
         end
