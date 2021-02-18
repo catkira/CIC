@@ -90,11 +90,15 @@ generate
                     valid_buf = {PIPELINE_STAGES{1'b0}};
                 end
                 else begin
-                    data_buf[0] <= int_in;
+                    if(j==0)
+                        data_buf[0] <= int_in;
+                    else
+                        data_buf[0] <= int_in * current_scaling_factor;
+
                     valid_buf[0] <= s_axis_in_tvalid;
                     for (reg [$clog2(PIPELINE_STAGES):0] j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
                         if (i != 0 && j == 1)
-                            data_buf[j+1] <= data_buf[j] * current_scaling_factor;
+                            data_buf[j+1] <= data_buf[j];
                         else
                             data_buf[j+1] <= data_buf[j];
                         valid_buf[j+1] <= valid_buf[j];
@@ -155,11 +159,11 @@ if (VARIABLE_RATE) begin
             valid_buf = {PIPELINE_STAGES{1'b0}};
         end
         else begin
-            data_buf[0] <= int_stage[CIC_N - 1].int_out;
+            data_buf[0] <= int_stage[CIC_N - 1].int_out * current_scaling_factor;
             valid_buf[0] <= s_axis_in_tvalid;
             for (reg [$clog2(PIPELINE_STAGES):0] j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
                 if(j==1)
-                    data_buf[j+1] <= data_buf[j] * current_scaling_factor;
+                    data_buf[j+1] <= data_buf[j] ;
                 else
                     data_buf[j+1] <= data_buf[j];
                 valid_buf[j+1] <= valid_buf[j];
