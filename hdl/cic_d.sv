@@ -18,7 +18,7 @@ module cic_d
     input                                   reset_n,
     input   wire    signed [INP_DW-1:0]     s_axis_in_tdata,
     input                                   s_axis_in_tvalid,
-    input   wire    signed [RATE_DW-1:0]     s_axis_rate_tdata,
+    input   wire    signed [RATE_DW-1:0]    s_axis_rate_tdata,
     input                                   s_axis_rate_tvalid,  
     output  wire    signed [OUT_DW-1:0]     m_axis_out_tdata,
     output                                  m_axis_out_tvalid 
@@ -28,19 +28,19 @@ module cic_d
 /*********************************************************************************************/
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
-//reg        [RATE_DW-1:0]           current_R = CIC_R;
 reg        [$clog2(CIC_R)-1:0]     current_scaling_factor = 0;
+reg        [$clog2(CIC_R)-1:0]     scaling_factor_buf = 0;
 
 always @(posedge clk)
 begin
     if (!reset_n) begin
-        // current_R <= CIC_R;
         current_scaling_factor <= 0;
+        scaling_factor_buf <= 0;
     end
     else if (s_axis_rate_tvalid) begin
-        // current_R <= s_axis_rate_tdata;
-        current_scaling_factor <= LUT[s_axis_rate_tdata];
+        scaling_factor_buf <= LUT[s_axis_rate_tdata];
     end
+    current_scaling_factor <= scaling_factor_buf;
 end
 /*********************************************************************************************/
 
