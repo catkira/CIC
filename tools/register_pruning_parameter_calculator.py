@@ -1,11 +1,11 @@
 from calculate_register_pruning import *
 import timeit
 
-N=6
-R=100
+N=5
+R=1024
 M=1
 start = timeit.default_timer()
-B_j = calculate_register_pruning(R=R, N=N, M=M, INP_DW=32, OUT_DW=32)
+B_j = calculate_register_pruning(R=R, N=N, M=M, INP_DW=16, OUT_DW=16)
 end = timeit.default_timer()
 print(F"elapsed time {end - start} s")
 print(B_j)

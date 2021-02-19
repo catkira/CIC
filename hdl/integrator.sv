@@ -1,14 +1,13 @@
 `timescale 1ns / 1ns
 module integrator
 /*********************************************************************************************/
-#(parameter DATA_WIDTH_INP = 8 , DATA_WIDTH_OUT = 9, SCALING_FACTOR_WIDTH = 16)
+#(parameter DATA_WIDTH_INP = 8 , DATA_WIDTH_OUT = 9)
 /*********************************************************************************************/
 (
     input                                       clk,
     input                                       reset_n,
     input wire signed   [DATA_WIDTH_INP - 1:0]  inp_samp_data,
     input                                       inp_samp_str,
-    input unsigned      [SCALING_FACTOR_WIDTH - 1:0]  scaling_factor,
     output wire signed  [DATA_WIDTH_OUT - 1:0]  out_samp_data
 );
 /*********************************************************************************************/
@@ -24,9 +23,6 @@ begin
     end
 end
 
-if (SCALING_FACTOR_WIDTH != 0)
-    assign out_samp_data = acc_reg[SUMMER_WIDTH - 1 -: DATA_WIDTH_OUT]  * scaling_factor;
-else
-    assign out_samp_data = acc_reg[SUMMER_WIDTH - 1 -: DATA_WIDTH_OUT];
+assign out_samp_data = acc_reg[SUMMER_WIDTH - 1 -: DATA_WIDTH_OUT];
 /*********************************************************************************************/
 endmodule
