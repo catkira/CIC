@@ -31,17 +31,23 @@ localparam      dw_out = B_max - get_prune_bits(2*CIC_N);
 localparam      SCALING_FACTOR_WIDTH = $clog2(CIC_R)*CIC_N;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor = 0;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     scaling_factor_buf = 0;
+reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor2 = 0;
+reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     scaling_factor_buf2 = 0;
 
 always @(posedge clk)
 begin
     if (!reset_n) begin
         current_scaling_factor <= 0;
         scaling_factor_buf <= 0;
+        current_scaling_factor2 <= 0;
+        scaling_factor_buf2 <= 0;
     end
     else if (s_axis_rate_tvalid) begin
         scaling_factor_buf <= LUT[s_axis_rate_tdata];
+        scaling_factor_buf2 <= LUT2[s_axis_rate_tdata];
     end
     current_scaling_factor <= scaling_factor_buf;
+    current_scaling_factor2 <= scaling_factor_buf2;
 end
 /*********************************************************************************************/
 
@@ -63,8 +69,16 @@ LUT_t LUT;
 integer k;
 initial begin
     foreach (LUT[k]) begin
-        LUT[k] = (CIC_R/k)**CIC_N;  // rounds down
-        //  
+        LUT[k] = $clog2(((CIC_R/k)**CIC_N)/2);  // rounds down
+        $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d", k, LUT[k], 2**$clog2(((CIC_R/k)**CIC_N)/2), (CIC_R/k)**CIC_N);
+    end
+end
+
+LUT_t LUT2;
+initial begin
+    foreach (LUT2[k]) begin
+        LUT2[k] = (((CIC_R/k)**CIC_N)<<3) / (2**$clog2(((CIC_R/k)**CIC_N)/2));  // rounds down
+        $display("scaling_factor2[%d] = %d", k, LUT2[k]);
     end
 end
 
@@ -94,15 +108,12 @@ generate
                 end
                 else begin
                     if(i == 0)
-                        data_buf[0] <= int_in;
+                        data_buf[0] <= (int_in << current_scaling_factor);
                     else
                         data_buf[0] <= int_in;
                     valid_buf[0] <= s_axis_in_tvalid;
                     for (integer j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
-                        if(i == 0 && j == 1)
-                            data_buf[j+1] <= data_buf[j]* current_scaling_factor;
-                        else
-                            data_buf[j+1] <= data_buf[j];
+                        data_buf[j+1] <= data_buf[j];
                         valid_buf[j+1] <= valid_buf[j];
                     end                 
                 end
@@ -255,7 +266,7 @@ always @(posedge clk)
 begin
     if      (~reset_n)                      comb_out_samp_data_reg <= '0;
     else if (comb_chain_out_str) begin
-        comb_out_samp_data_reg <= comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW];    
+        comb_out_samp_data_reg <= ((comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW]) * current_scaling_factor2)>>3;    
         // $display("comb_out = %x   ds_out = %x",comb_stage[CIC_N - 1].comb_out,ds_out_samp_data);
         // if (current_dw_out < OUT_DW) begin
             // $display("%x",comb_stage[CIC_N - 1].comb_out);
