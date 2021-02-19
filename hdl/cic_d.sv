@@ -26,8 +26,8 @@ module cic_d
 /*********************************************************************************************/
 `include "cic_functions.vh"
 /*********************************************************************************************/
-localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
-localparam      dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
+localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW ;
+localparam      dw_out = B_max - get_prune_bits(2*CIC_N);
 localparam      SCALING_FACTOR_WIDTH = $clog2(CIC_R**CIC_N);
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor = 0;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     scaling_factor_buf = 0;
@@ -73,8 +73,8 @@ generate
     for (i = 0; i < CIC_N; i = i + 1) begin : int_stage
         localparam B_jm1 = get_prune_bits(i);   ///< the number of bits to prune in previous stage
         localparam B_j   = get_prune_bits(i+1); ///< the number of bits to prune in current stage
-        localparam idw_cur = B_max - B_jm1 + 1;         ///< data width on the input
-        localparam odw_cur = B_max - B_j   + 1;         ///< data width on the output
+        localparam idw_cur = B_max - B_jm1;         ///< data width on the input
+        localparam odw_cur = B_max - B_j;           ///< data width on the output
         
         wire signed [idw_cur - 1 : 0] int_in;           ///< input data bus
         if ( i == 0 )   assign int_in = s_axis_in_tdata;                  ///< if it is the first stage, then takes data from input of CIC filter
@@ -137,7 +137,7 @@ generate
 endgenerate
 /*********************************************************************************************/
 localparam B_m = get_prune_bits(CIC_N);     ///< bits to prune on the m-th stage
-localparam ds_dw = B_max - B_m + 1;         ///< data width of the downsampler
+localparam ds_dw = B_max - B_m;             ///< data width of the downsampler
 /*********************************************************************************************/
 wire    signed [ds_dw - 1 : 0]  ds_out_samp_data;
 wire                            ds_out_samp_str;
@@ -210,8 +210,8 @@ generate
     for (j = 0; j < CIC_N; j = j + 1) begin : comb_stage
         localparam B_m_j_m1             =    get_prune_bits(CIC_N + j);
         localparam B_m_j                =    get_prune_bits(CIC_N + j + 1);
-        localparam idw_cur = B_max - B_m_j_m1 + 1;
-        localparam odw_cur = B_max - B_m_j + 1;
+        localparam idw_cur = B_max - B_m_j_m1;
+        localparam odw_cur = B_max - B_m_j;
         wire signed [idw_cur - 1 : 0] comb_in;
         wire signed [idw_cur - 1 : 0] comb_inst_out;
         wire signed [odw_cur - 1 : 0] comb_out;

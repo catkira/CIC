@@ -14,7 +14,7 @@ def calculate_register_pruning(R, N, M, INP_DW, OUT_DW):
     # calculate register pruning as described in Hogenauer, 1981
     CIC_Filter_Gain = (R*M)**N        
     Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
-    Num_Output_Bits_With_No_Truncation = Num_of_Bits_Growth + INP_DW - 1    
+    Num_Output_Bits_With_No_Truncation = Num_of_Bits_Growth + INP_DW   
     
     F_j = np.zeros(2*N + 2)
     for j in np.arange(2*N,0,-1):
@@ -32,14 +32,14 @@ def calculate_register_pruning(R, N, M, INP_DW, OUT_DW):
     F_j[2*N + 1]=1
 
 
-    Num_of_Output_Bits_Truncated = Num_Output_Bits_With_No_Truncation - OUT_DW + 1
+    Num_of_Output_Bits_Truncated = Num_Output_Bits_With_No_Truncation - OUT_DW
     sigma = np.sqrt((2**Num_of_Output_Bits_Truncated)**2/12)
 
     B_j = np.floor(-np.log2(F_j) + np.log2(sigma) + 0.5*math.log2(6/N));        
     out_bits = Num_Output_Bits_With_No_Truncation - B_j
 
     # last items need some special treatment
-    B_j[2*N+1] = Num_Output_Bits_With_No_Truncation - OUT_DW + 1
+    B_j[2*N+1] = Num_Output_Bits_With_No_Truncation - OUT_DW
     out_bits[2*N+1] = OUT_DW
 
     for j in np.arange(1, 2*N+2):
