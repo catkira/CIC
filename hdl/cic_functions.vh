@@ -44,7 +44,7 @@ function integer B_max_calc;
 	reg unsigned [127:0] RMpN;
 	begin
 		RMpN = (R * M) ** N;
-		B_max_calc = clog2_l(RMpN) + INP_DW - 1;
+		B_max_calc = clog2_l(RMpN) + INP_DW;
 		//$display("B_max_calc: N=%2d, R=%2d, M=%2d, ret=%2d", N, R, M, B_max_calc);
 	end
 endfunction
@@ -56,7 +56,7 @@ function integer B_out_calc;
 	input integer INP_DW;
 	input integer OUT_DW;
 	begin
-		B_out_calc = B_max_calc(N, R, M, OUT_DW) - B_calc(2 * N, N, R, M, INP_DW, OUT_DW) + 1;
+		B_out_calc = B_max_calc(N, R, M, OUT_DW) - B_calc(2 * N, N, R, M, INP_DW, OUT_DW);
 	end
 endfunction
  
@@ -147,9 +147,9 @@ function integer B_calc;
 		end else begin
 			B_max = B_max_calc(N, R, M, dw_in);
 			if (j == 2 * N + 1) begin
-				B_calc = B_max - dw_out + 1;
+				B_calc = B_max - dw_out;
 			end else begin
-				B_2Np1 = B_max - dw_out + 1;
+				B_2Np1 = B_max - dw_out;
 				F_sq_j = F_sq_calc(j, N, R, M);
 				F_sq_2Np1 = F_sq_calc(2 * N + 1, N, R, M);
 				sigma_T_2Np1_sq = (128'b1 << (2 * B_2Np1)) * F_sq_2Np1 / 12;
