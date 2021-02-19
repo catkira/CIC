@@ -29,10 +29,11 @@ module cic_d
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW ;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N);
 localparam      SCALING_FACTOR_WIDTH = $clog2(CIC_R)*CIC_N;
+localparam      SCALING_FACTOR_WIDTH2 = $clog2(CIC_R)*CIC_N + 3;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor = 0;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     scaling_factor_buf = 0;
-reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor2 = 0;
-reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     scaling_factor_buf2 = 0;
+reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     current_scaling_factor2 = 0;
+reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     scaling_factor_buf2 = 0;
 
 always @(posedge clk)
 begin
@@ -74,7 +75,8 @@ initial begin
     end
 end
 
-LUT_t LUT2;
+typedef bit unsigned [SCALING_FACTOR_WIDTH2-1:0] LUT2_t [1:CIC_R]; // possible rates are 1..CIC_R
+LUT2_t LUT2;
 initial begin
     foreach (LUT2[k]) begin
         LUT2[k] = (((CIC_R/k)**CIC_N)<<3) / (2**$clog2(((CIC_R/k)**CIC_N)/2));  // rounds down
