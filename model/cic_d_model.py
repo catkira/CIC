@@ -29,8 +29,8 @@ class Model:
 
         CIC_Filter_Gain = (self.R*self.M)**self.N        
         Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
-        self.Num_Output_Bits_With_No_Truncation = Num_of_Bits_Growth + self.INP_DW - 1
-        print(f"B_max: {self.Num_Output_Bits_With_No_Truncation}")
+        self.Num_Output_Bits_Without_Truncation = Num_of_Bits_Growth + self.INP_DW 
+        print(f"B_max: {self.Num_Output_Bits_Without_Truncation}")
 
     def cic_model_stage_get_out(self, stage):
         ret = 0
@@ -42,9 +42,9 @@ class Model:
     def set_rate(self, rate):
         self.R = rate
         self.reset()
-        #CIC_Filter_Gain = (self.R*self.M)**self.N        
-        #Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
-        #self.Num_Output_Bits_With_No_Truncation = Num_of_Bits_Growth + self.INP_DW - 1
+        self.CIC_Filter_Gain = (self.R*self.M)**self.N        
+        self.Num_of_Bits_Growth = np.ceil(math.log2(self.CIC_Filter_Gain))
+        self.Num_Output_Bits_Without_Truncation = self.Num_of_Bits_Growth + self.INP_DW
 
     def set_data(self, data_in):
         self.data_in_buf = data_in
@@ -103,13 +103,11 @@ class Model:
         CIC_Filter_Gain = (self.R*self.M)**self.N        
 
 
-        cic_B_scale_out = self.Num_Output_Bits_With_No_Truncation + 1 - self.OUT_DW
-        cic_S_prune_last_stage = int(1) << int(cic_B_scale_out)        
-        Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
-        Num_Output_Bits_With_No_Truncation_2 = Num_of_Bits_Growth + self.INP_DW - 1
-        cic_S_prune_last_stage_2 = int(1) << int(Num_Output_Bits_With_No_Truncation_2 + 1 - self.OUT_DW)
+        #cic_B_scale_out = self.Num_Output_Bits_With_No_Truncation - self.OUT_DW
+        #cic_S_prune_last_stage = int(1) << int(cic_B_scale_out)        
+        #Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
+        #Num_Output_Bits_Without_Truncation = Num_of_Bits_Growth + self.INP_DW 
 
         #print(F"{self.cic_model_stage_get_out(self.N - 1)} >> {cic_B_scale_out} = {self.cic_model_stage_get_out(self.N - 1) // cic_S_prune_last_stage}")
         #print(F"- {self.cic_model_stage_get_out(self.N - 1)} >> {Num_Output_Bits_With_No_Truncation_2 + 1 - self.OUT_DW} = {self.cic_model_stage_get_out(self.N - 1) // cic_S_prune_last_stage_2}")
-        return self.cic_model_stage_get_out(self.N - 1) // cic_S_prune_last_stage_2
-    
+        return int(self.cic_model_stage_get_out(self.N - 1)) >> int(self.Num_Output_Bits_Without_Truncation - self.OUT_DW)
