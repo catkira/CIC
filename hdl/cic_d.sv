@@ -28,8 +28,8 @@ module cic_d
 /*********************************************************************************************/
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
-reg        [$clog2(CIC_R)-1:0]     current_scaling_factor = 0;
-reg        [$clog2(CIC_R)-1:0]     scaling_factor_buf = 0;
+reg        [$clog2(CIC_R**CIC_N)-1:0]     current_scaling_factor = 0;
+reg        [$clog2(CIC_R**CIC_N)-1:0]     scaling_factor_buf = 0;
 
 always @(posedge clk)
 begin
@@ -56,13 +56,13 @@ function integer get_prune_bits(input byte i);
     end
 endfunction
 
-typedef bit unsigned [$clog2(CIC_R)-1:0] LUT_t [1:CIC_R]; // possible rates are 1..CIC_R
+typedef bit unsigned [$clog2(CIC_R**CIC_N)-1:0] LUT_t [1:CIC_R]; // possible rates are 1..CIC_R
 LUT_t LUT;
 
 integer k;
 initial begin
     foreach (LUT[k]) begin
-        LUT[k] = CIC_R/k;  // rounds down
+        LUT[k] = (CIC_R/k)**CIC_N;  // rounds down
         //$display("LUT[%d] = %d", k, LUT[k]);
     end
 end
@@ -92,10 +92,10 @@ generate
                         data_buf[j] = 0;
                 end
                 else begin
-                    if(i==0)
-                        data_buf[0] <= int_in;
+                    if(i==1)
+                        data_buf[0] <= int_in * (current_scaling_factor);
                     else
-                        data_buf[0] <= int_in * current_scaling_factor;
+                        data_buf[0] <= int_in;
 
                     valid_buf[0] <= s_axis_in_tvalid;
                     for (integer j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
@@ -160,7 +160,8 @@ if (VARIABLE_RATE) begin
                 data_buf[j] = 0;
         end
         else begin
-            data_buf[0] <= int_stage[CIC_N - 1].int_out * current_scaling_factor;
+            // data_buf[0] <= int_stage[CIC_N - 1].int_out * current_scaling_factor;
+            data_buf[0] <= int_stage[CIC_N - 1].int_out;
             valid_buf[0] <= s_axis_in_tvalid;
             for (integer j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
                 data_buf[j+1] <= data_buf[j];
