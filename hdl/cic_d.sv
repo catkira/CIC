@@ -28,8 +28,9 @@ module cic_d
 /*********************************************************************************************/
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW - 1;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N) + 1;
-reg        [$clog2(CIC_R**CIC_N)-1:0]     current_scaling_factor = 0;
-reg        [$clog2(CIC_R**CIC_N)-1:0]     scaling_factor_buf = 0;
+localparam      SCALING_FACTOR_WIDTH = $clog2(CIC_R**CIC_N);
+reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor = 0;
+reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     scaling_factor_buf = 0;
 
 always @(posedge clk)
 begin
@@ -56,13 +57,13 @@ function integer get_prune_bits(input byte i);
     end
 endfunction
 
-typedef bit unsigned [$clog2(CIC_R**CIC_N)-1:0] LUT_t [1:CIC_R]; // possible rates are 1..CIC_R
+typedef bit unsigned [SCALING_FACTOR_WIDTH-1:0] LUT_t [1:CIC_R]; // possible rates are 1..CIC_R
 LUT_t LUT;
 
 integer k;
 initial begin
     foreach (LUT[k]) begin
-        LUT[k] = (CIC_R/k)**CIC_N;  // rounds down
+        LUT[k] = (CIC_R/k);  // rounds down
         //$display("LUT[%d] = %d", k, LUT[k]);
     end
 end
@@ -92,34 +93,33 @@ generate
                         data_buf[j] = 0;
                 end
                 else begin
-                    if(i==1)
-                        data_buf[0] <= int_in * (current_scaling_factor);
-                    else
-                        data_buf[0] <= int_in;
-
+                    data_buf[0] <= int_in;
                     valid_buf[0] <= s_axis_in_tvalid;
                     for (integer j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
                         data_buf[j+1] <= data_buf[j];
                         valid_buf[j+1] <= valid_buf[j];
                     end                 
                 end
-            end    
+            end   
             integrator #(
                 idw_cur,
-                odw_cur
+                odw_cur,
+                SCALING_FACTOR_WIDTH
                 )
                 int_inst(
                 .clk            (clk),
                 .reset_n        (reset_n),
                 .inp_samp_data  (data_buf[PIPELINE_STAGES-1]),
                 .inp_samp_str   (valid_buf[PIPELINE_STAGES-1]),
+                .scaling_factor (current_scaling_factor),
                 .out_samp_data  (int_out)
                 );            
         end
         else begin        
             integrator #(
                 idw_cur,
-                odw_cur
+                odw_cur,
+                0
                 )
                 int_inst(
                 .clk            (clk),
