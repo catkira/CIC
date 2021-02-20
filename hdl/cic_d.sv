@@ -272,7 +272,7 @@ always @(posedge clk)
 begin
     if      (~reset_n)                      comb_out_samp_data_reg <= '0;
     else if (comb_chain_out_str) begin
-        comb_out_samp_data_reg <= (comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW]);    
+        comb_out_samp_data_reg <= {{4{comb_stage[CIC_N - 1].comb_out[dw_out - 1]}},{(comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW])}};    
         // $display("comb_out = %x   ds_out = %x",comb_stage[CIC_N - 1].comb_out,ds_out_samp_data);
         // if (current_dw_out < OUT_DW) begin
             // $display("%x",comb_stage[CIC_N - 1].comb_out);
