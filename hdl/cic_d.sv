@@ -28,8 +28,8 @@ module cic_d
 /*********************************************************************************************/
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW ;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N);
-localparam      SCALING_FACTOR_WIDTH = $clog2(CIC_R)*CIC_N;
-localparam      SCALING_FACTOR_WIDTH2 = $clog2(CIC_R)*CIC_N + 3;
+localparam      SCALING_FACTOR_WIDTH = clog2_l(CIC_R)*CIC_N;
+localparam      SCALING_FACTOR_WIDTH2 = clog2_l(CIC_R)*CIC_N + 3;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor = 0;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     scaling_factor_buf = 0;
 reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     current_scaling_factor2 = 0;
@@ -72,9 +72,9 @@ LUT2_t LUT2;
 integer k;
 initial begin
     foreach (LUT[k]) begin
-        LUT[k] = $clog2(((CIC_R/k)**CIC_N)/2);  // rounds down
-        $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d", k, LUT[k], 2**$clog2(((CIC_R/k)**CIC_N)/2), (CIC_R/k)**CIC_N);
-        LUT2[k] = (((CIC_R/k)**CIC_N)<<3) / (2**$clog2(((CIC_R/k)**CIC_N)/2));  // rounds down
+        LUT[k] = clog2_l(((CIC_R/k)**CIC_N)/2);  // rounds down
+        $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d", k, LUT[k], 2**flog2_l(((CIC_R/k)**CIC_N)), (CIC_R/k)**CIC_N);
+        LUT2[k] = (((CIC_R/k)**CIC_N)<<3) / (2**flog2_l(((CIC_R/k)**CIC_N)));  // rounds down
         $display("scaling_factor2[%d] = %d", k, LUT2[k]);
     end
 end
