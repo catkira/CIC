@@ -261,8 +261,12 @@ generate
     end
 endgenerate
 /*********************************************************************************************/
-reg             signed [OUT_DW-1:0]     comb_out_samp_data_reg;
+reg             signed [OUT_DW-1+4:0]   comb_out_samp_data_reg;
 reg                                     comb_out_samp_str_reg;
+
+reg             signed [OUT_DW-1:0]   out_data_buf;
+reg                                   out_valid_buf;
+
 
 always @(posedge clk)
 begin
@@ -280,11 +284,19 @@ begin
 end
 
 always @(posedge clk)
-    if      (~reset_n)                      comb_out_samp_str_reg <= '0;
-    else                                    comb_out_samp_str_reg <= comb_chain_out_str;
+    if      (~reset_n) begin
+        comb_out_samp_str_reg <= '0;
+        out_valid_buf <= 0;
+        out_data_buf <= 0;
+    end
+    else begin                           
+        comb_out_samp_str_reg <= comb_chain_out_str;
+        out_data_buf <= comb_out_samp_data_reg;
+        out_valid_buf <= comb_out_samp_str_reg;
+    end
 
-assign m_axis_out_tdata      = comb_out_samp_data_reg;
-assign m_axis_out_tvalid     = comb_out_samp_str_reg;
+assign m_axis_out_tdata      = out_data_buf;
+assign m_axis_out_tvalid     = out_valid_buf;
 /*********************************************************************************************/
 
 `ifdef COCOTB_SIM

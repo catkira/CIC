@@ -2,11 +2,37 @@ from calculate_register_pruning import *
 import timeit
 
 # example from Hogenauer paper
-N=4
-R=25
-M=1
-INP_DW=16
-OUT_DW=16
+if False:
+    N=4
+    R=25
+    M=1
+    INP_DW=16
+    OUT_DW=16
+
+# HSP502124
+if False:
+    N=5
+    R=32
+    M=1
+    INP_DW=15
+    OUT_DW=24
+    
+# 1996 Paper
+if True:
+    N=6
+    R=1024
+    M=1
+    INP_DW=16
+    OUT_DW=16    
+    
+# MRI
+if False:
+    N=6
+    R=4095
+    M=1
+    INP_DW=32
+    OUT_DW=32
+
 
 start = timeit.default_timer()
 B_j = calculate_register_pruning(R=R, N=N, M=M, INP_DW=INP_DW, OUT_DW=OUT_DW)

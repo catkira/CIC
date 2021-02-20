@@ -18,9 +18,7 @@ assign #4       sum = acc_reg + inp_samp_data;  // delay for 18x18 multiplier of
 always @(posedge clk)
 begin
     if              (!reset_n)      acc_reg <= '0;
-    else    if      (inp_samp_str) begin
-        acc_reg <= sum;
-    end
+    else    if      (inp_samp_str)  acc_reg <= sum;
 end
 
 assign out_samp_data = acc_reg[SUMMER_WIDTH - 1 -: DATA_WIDTH_OUT];
