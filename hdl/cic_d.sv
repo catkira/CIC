@@ -66,19 +66,14 @@ endfunction
 
 typedef bit unsigned [SCALING_FACTOR_WIDTH-1:0] LUT_t [1:CIC_R]; // possible rates are 1..CIC_R
 LUT_t LUT;
+typedef bit unsigned [SCALING_FACTOR_WIDTH2-1:0] LUT2_t [1:CIC_R]; // possible rates are 1..CIC_R
+LUT2_t LUT2;
 
 integer k;
 initial begin
     foreach (LUT[k]) begin
         LUT[k] = $clog2(((CIC_R/k)**CIC_N)/2);  // rounds down
         $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d", k, LUT[k], 2**$clog2(((CIC_R/k)**CIC_N)/2), (CIC_R/k)**CIC_N);
-    end
-end
-
-typedef bit unsigned [SCALING_FACTOR_WIDTH2-1:0] LUT2_t [1:CIC_R]; // possible rates are 1..CIC_R
-LUT2_t LUT2;
-initial begin
-    foreach (LUT2[k]) begin
         LUT2[k] = (((CIC_R/k)**CIC_N)<<3) / (2**$clog2(((CIC_R/k)**CIC_N)/2));  // rounds down
         $display("scaling_factor2[%d] = %d", k, LUT2[k]);
     end
@@ -100,13 +95,13 @@ generate
         if (VARIABLE_RATE) begin
             localparam PIPELINE_STAGES = 3;
             reg [idw_cur-1:0] data_buf[0:PIPELINE_STAGES-1];
-            reg  [0:PIPELINE_STAGES-1]        valid_buf;
+            reg  [PIPELINE_STAGES-1:0]        valid_buf;
             always @(posedge clk)
             begin
                 if(!reset_n) begin
-                    valid_buf = {PIPELINE_STAGES{1'b0}};
+                    valid_buf <= {PIPELINE_STAGES{1'b0}};
                     foreach(data_buf[j])
-                        data_buf[j] = 0;
+                        data_buf[j] <= 0;
                 end
                 else begin
                     if(i == 0)
@@ -166,14 +161,14 @@ if (VARIABLE_RATE) begin
 
     localparam PIPELINE_STAGES = 3;
     reg [ds_dw-1:0] data_buf[0:PIPELINE_STAGES-1];
-    reg  [0:PIPELINE_STAGES-1]        valid_buf;
+    reg  [PIPELINE_STAGES-1:0]        valid_buf;
     
     always @(posedge clk)
     begin
         if(!reset_n) begin
-            valid_buf = {PIPELINE_STAGES{1'b0}};
+            valid_buf <= {PIPELINE_STAGES{1'b0}};
             foreach(data_buf[j])
-                data_buf[j] = 0;
+                data_buf[j] <= 0;
         end
         else begin
             // data_buf[0] <= int_stage[CIC_N - 1].int_out * current_scaling_factor;
