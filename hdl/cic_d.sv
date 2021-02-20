@@ -45,14 +45,16 @@ begin
     end
     else if (s_axis_rate_tvalid) begin
         scaling_factor_buf <= LUT[s_axis_rate_tdata];
+        //scaling_factor_buf <= LUT[s_axis_rate_tdata][SCALING_FACTOR_WIDTH+SCALING_FACTOR_WIDTH2-1-:SCALING_FACTOR_WIDTH];
         scaling_factor_buf2 <= LUT2[s_axis_rate_tdata];
+        //scaling_factor_buf2 <= LUT[s_axis_rate_tdata][SCALING_FACTOR_WIDTH2-1:0];
     end
     current_scaling_factor <= scaling_factor_buf;
     current_scaling_factor2 <= scaling_factor_buf2;
 end
 /*********************************************************************************************/
 
-function integer get_prune_bits(input byte i);
+function integer get_prune_bits(input integer i);
     if (PRUNE_BITS[32*(CIC_N*2+2)-1:0] == 0) begin
         //$display("get_prune_bits(%d) = %d", i, B_calc(i, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW));
         return B_calc(i, CIC_N, CIC_R, CIC_M, INP_DW, OUT_DW);
@@ -65,17 +67,22 @@ function integer get_prune_bits(input byte i);
 endfunction
 
 typedef bit unsigned [SCALING_FACTOR_WIDTH-1:0] LUT_t [1:CIC_R]; // possible rates are 1..CIC_R
-LUT_t LUT;
+(* ramstyle = "distributed" *)LUT_t LUT;
 typedef bit unsigned [SCALING_FACTOR_WIDTH2-1:0] LUT2_t [1:CIC_R]; // possible rates are 1..CIC_R
-LUT2_t LUT2;
+(* ramstyle = "distributed" *)LUT2_t LUT2;
 
 integer k;
 initial begin
+    reg unsigned [31:0] pre_shift;
+    reg unsigned [31:0] post_mult;
     foreach (LUT[k]) begin
-        LUT[k] = clog2_l(((CIC_R/k)**CIC_N)/2);  // rounds down
+        //pre_shift = clog2_l(((CIC_R/k)**CIC_N)/2); 
+        //post_mult = (((CIC_R/k)**CIC_N)<<3) / (2**flog2_l(((CIC_R/k)**CIC_N)));
+        //LUT[k] = {{pre_shift[SCALING_FACTOR_WIDTH-1:0]},{post_mult[SCALING_FACTOR_WIDTH2-1:0]}};
+        LUT[k] = clog2_l(((CIC_R/k)**CIC_N)/2); 
         $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d", k, LUT[k], 2**flog2_l(((CIC_R/k)**CIC_N)), (CIC_R/k)**CIC_N);
         LUT2[k] = (((CIC_R/k)**CIC_N)<<3) / (2**flog2_l(((CIC_R/k)**CIC_N)));  // rounds down
-        $display("scaling_factor2[%d] = %d", k, LUT2[k]);
+        //$display("scaling_factor2[%d] = %d", k, LUT2[k]);
     end
 end
 
