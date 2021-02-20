@@ -30,8 +30,6 @@ def calculate_register_pruning(R, N, M, INP_DW, OUT_DW):
         F_j[j] = np.sqrt(np.dot(h_j,h_j))
 
     F_j[2*N + 1]=1
-    F_j[0] = 0 # never used
-
 
     Num_of_Output_Bits_Truncated = B_max - OUT_DW
     sigma = np.sqrt((2**Num_of_Output_Bits_Truncated)**2/12)

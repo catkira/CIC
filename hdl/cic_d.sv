@@ -272,7 +272,7 @@ always @(posedge clk)
 begin
     if      (~reset_n)                      comb_out_samp_data_reg <= '0;
     else if (comb_chain_out_str) begin
-        comb_out_samp_data_reg <= ((comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW]) * current_scaling_factor2)>>3;    
+        comb_out_samp_data_reg <= (comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW]);    
         // $display("comb_out = %x   ds_out = %x",comb_stage[CIC_N - 1].comb_out,ds_out_samp_data);
         // if (current_dw_out < OUT_DW) begin
             // $display("%x",comb_stage[CIC_N - 1].comb_out);
@@ -291,7 +291,7 @@ always @(posedge clk)
     end
     else begin                           
         comb_out_samp_str_reg <= comb_chain_out_str;
-        out_data_buf <= comb_out_samp_data_reg;
+        out_data_buf <= (comb_out_samp_data_reg * current_scaling_factor2)>>3;
         out_valid_buf <= comb_out_samp_str_reg;
     end
 
