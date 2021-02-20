@@ -1,11 +1,15 @@
 from calculate_register_pruning import *
 import timeit
 
-N=5
-R=1024
+# example from Hogenauer paper
+N=4
+R=25
 M=1
+INP_DW=16
+OUT_DW=16
+
 start = timeit.default_timer()
-B_j = calculate_register_pruning(R=R, N=N, M=M, INP_DW=16, OUT_DW=16)
+B_j = calculate_register_pruning(R=R, N=N, M=M, INP_DW=INP_DW, OUT_DW=OUT_DW)
 end = timeit.default_timer()
 print(F"elapsed time {end - start} s")
 print(B_j)
