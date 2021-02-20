@@ -88,7 +88,11 @@ generate
         localparam odw_cur = B_max - B_j;           ///< data width on the output
         
         wire signed [idw_cur - 1 : 0] int_in;           ///< input data bus
-        if ( i == 0 )   assign int_in = s_axis_in_tdata;
+        if ( i == 0 )   
+            if ((idw_cur-INP_DW) >= 0)
+                assign int_in = {{(idw_cur-INP_DW){s_axis_in_tdata[INP_DW-1]}},s_axis_in_tdata};
+            else
+                assign int_in = s_axis_in_tdata[idw_cur-1:0];
         else            assign int_in = int_stage[i - 1].int_out;
         wire signed [odw_cur - 1 : 0] int_out;
         
