@@ -22,7 +22,7 @@ endfunction
  
  
 // using $clog2 does not synthesize in vivado 2020.2
-function integer clog2_l;
+function reg unsigned [31 : 0] clog2_l;
 	input reg unsigned [127:0] depth;
 	reg unsigned [127:0] i;
 	begin
@@ -32,7 +32,7 @@ function integer clog2_l;
 			for(clog2_l = 0; i > 0; clog2_l = clog2_l + 1)
 				i = i >> 1;
 		end else
-			clog2_l = -1;
+			clog2_l = 0;
 	end
 endfunction
  
@@ -61,7 +61,7 @@ function integer B_out_calc;
 endfunction
  
  
-function integer flog2_l;
+function reg unsigned [31 : 0] flog2_l;
 	input reg unsigned [127:0] depth;
 	reg unsigned [127:0] i;
 	begin
