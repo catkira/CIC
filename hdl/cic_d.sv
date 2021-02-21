@@ -29,7 +29,8 @@ module cic_d
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW ;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N);
 localparam      SCALING_FACTOR_WIDTH = clog2_l(clog2_l(CIC_R)*CIC_N)+1;
-localparam      SCALING_FACTOR_WIDTH2 = clog2_l(clog2_l(CIC_R)*CIC_N)+4+1;
+localparam      SCALING_FACTOR_SHIFT = 5;
+localparam      SCALING_FACTOR_WIDTH2 = clog2_l(clog2_l(CIC_R)*CIC_N)+SCALING_FACTOR_SHIFT+1;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor = 0;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     scaling_factor_buf = 0;
 reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     current_scaling_factor2 = 0;
@@ -48,11 +49,8 @@ begin
     end
     else if (s_axis_rate_tvalid) begin
         scaling_factor_buf <= LUT[s_axis_rate_tdata];
-        $display("pre_shift = %d   rate = %d  lut-width = %d" , LUT[s_axis_rate_tdata], s_axis_rate_tdata,SCALING_FACTOR_WIDTH);
-
-        //scaling_factor_buf <= LUT[s_axis_rate_tdata][SCALING_FACTOR_WIDTH+SCALING_FACTOR_WIDTH2-1-:SCALING_FACTOR_WIDTH];
         scaling_factor_buf2 <= LUT2[s_axis_rate_tdata];
-        //scaling_factor_buf2 <= LUT[s_axis_rate_tdata][SCALING_FACTOR_WIDTH2-1:0];
+        $display("pre_shift = %d   rate = %d  lut-width = %d" , LUT[s_axis_rate_tdata], s_axis_rate_tdata,SCALING_FACTOR_WIDTH);
     end
     current_scaling_factor <= scaling_factor_buf;
     current_scaling_factor2 <= scaling_factor_buf2;
@@ -81,7 +79,7 @@ initial begin
     for(k=1;k<=CIC_R;k=k+1) begin
         small_k = k[clog2_l(CIC_R):0];
         pre_shift = flog2_l((R_extended/k)**CIC_N); 
-        post_mult = (((CIC_R/k)**CIC_N)<<3) / (base2**flog2_l(((R_extended/k)**CIC_N)));
+        post_mult = (((CIC_R/k)**CIC_N)<<SCALING_FACTOR_SHIFT) / (base2**flog2_l(((R_extended/k)**CIC_N)));
         LUT[small_k] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
         LUT2[small_k] = post_mult[SCALING_FACTOR_WIDTH2-1:0];
         $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", k, LUT[small_k], base2**flog2_l((R_extended/k)**CIC_N), (R_extended/k)**CIC_N, LUT2[small_k]);
@@ -117,10 +115,8 @@ generate
                         data_buf[j] <= 0;
                 end
                 else begin
-                    if(i == 0) begin
+                    if(i == 0)
                         data_buf[0] <= (int_in << current_scaling_factor);
-                        $display("databuf = %d   %d    %d",data_buf[0], int_in,current_scaling_factor);
-                    end
                     else
                         data_buf[0] <= int_in;
                     valid_buf[0] <= s_axis_in_tvalid;
@@ -271,10 +267,10 @@ generate
     end
 endgenerate
 /*********************************************************************************************/
-reg             signed [OUT_DW-1+4:0]   comb_out_samp_data_reg;
+reg             signed [OUT_DW-1+SCALING_FACTOR_SHIFT:0]   comb_out_samp_data_reg;
 reg                                     comb_out_samp_str_reg;
 
-reg             signed [OUT_DW-1+4:0]   out_data_buf;
+reg             signed [OUT_DW-1+SCALING_FACTOR_SHIFT:0]   out_data_buf;
 reg                                   out_valid_buf;
 
 
@@ -282,7 +278,7 @@ always @(posedge clk)
 begin
     if      (~reset_n)                      comb_out_samp_data_reg <= '0;
     else if (comb_chain_out_str) begin
-        comb_out_samp_data_reg <= {{4{comb_stage[CIC_N - 1].comb_out[dw_out - 1]}},{(comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW])}};    
+        comb_out_samp_data_reg <= {{SCALING_FACTOR_SHIFT{comb_stage[CIC_N - 1].comb_out[dw_out - 1]}},{(comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW])}};    
         // $display("comb_out = %x   ds_out = %x",comb_stage[CIC_N - 1].comb_out,ds_out_samp_data);
         // if (current_dw_out < OUT_DW) begin
             // $display("%x",comb_stage[CIC_N - 1].comb_out);
@@ -301,8 +297,7 @@ always @(posedge clk)
     end
     else begin                           
         comb_out_samp_str_reg <= comb_chain_out_str;
-        //out_data_buf <= (comb_out_samp_data_reg * current_scaling_factor2)>>3;
-        out_data_buf <= comb_out_samp_data_reg;
+        out_data_buf <= (comb_out_samp_data_reg * current_scaling_factor2)>>SCALING_FACTOR_SHIFT;
         out_valid_buf <= comb_out_samp_str_reg;
     end
 
