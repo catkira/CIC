@@ -106,7 +106,7 @@ async def simple_test(dut):
 @cocotb.test()
 async def variable_rate_test(dut):
     tb = TB(dut)
-    rate_list = [10, int(tb.R/10)]
+    rate_list = [tb.R,10]
     for rate in rate_list:
         print(f"rate: {rate}")
         dut.s_axis_in_tvalid = 0
@@ -118,7 +118,7 @@ async def variable_rate_test(dut):
         dut.s_axis_rate_tvalid = 0
         await RisingEdge(dut.clk)
         tb.model.set_rate(rate)
-        num_items = 10
+        num_items = 100
         output = []
         output_model = []
         gen = cocotb.fork(tb.generate_input())
@@ -215,11 +215,11 @@ def calculate_prune_bits(R, N, M, INP_DW, OUT_DW):
         # testcase="simple_test",
     # )
     
-@pytest.mark.parametrize("R", [4095])    # max rate
+@pytest.mark.parametrize("R", [100])    # max rate
 @pytest.mark.parametrize("N", [6, 3])
 @pytest.mark.parametrize("M", [1, 3])
 @pytest.mark.parametrize("INP_DW", [16])
-@pytest.mark.parametrize("OUT_DW", [16, 14])
+@pytest.mark.parametrize("OUT_DW", [14, 16])
 @pytest.mark.parametrize("RATE_DW", [16])
 @pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [1])
 @pytest.mark.parametrize("VARIABLE_RATE", [1])
