@@ -66,9 +66,7 @@ function integer get_prune_bits(input integer i);
     end
 endfunction
 
-typedef reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT_t [1:CIC_R]; // possible rates are 1..CIC_R
 (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT [1:CIC_R];
-typedef reg unsigned [SCALING_FACTOR_WIDTH2-1:0] LUT2_t [1:CIC_R]; // possible rates are 1..CIC_R
 (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH2-1:0]  LUT2 [1:CIC_R];
 
 integer k;
@@ -76,10 +74,10 @@ initial begin
     reg unsigned [31:0] pre_shift;
     reg unsigned [31:0] post_mult;
     foreach (LUT[k]) begin
-        //pre_shift = clog2_l(((CIC_R/k)**CIC_N)/2); 
+        pre_shift = clog2_l(((CIC_R/k)**CIC_N)/2); 
         //post_mult = (((CIC_R/k)**CIC_N)<<3) / (2**flog2_l(((CIC_R/k)**CIC_N)));
         //LUT[k] = {{pre_shift[SCALING_FACTOR_WIDTH-1:0]},{post_mult[SCALING_FACTOR_WIDTH2-1:0]}};
-        LUT[k] = clog2_l(((CIC_R/k)**CIC_N)/2); 
+        LUT[k] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
         $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d", k, LUT[k], 2**flog2_l(((CIC_R/k)**CIC_N)), (CIC_R/k)**CIC_N);
         LUT2[k] = (((CIC_R/k)**CIC_N)<<3) / (2**flog2_l(((CIC_R/k)**CIC_N)));  // rounds down
         //$display("scaling_factor2[%d] = %d", k, LUT2[k]);
