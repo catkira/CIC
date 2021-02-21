@@ -28,7 +28,7 @@ module cic_d
 /*********************************************************************************************/
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW ;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N);
-localparam      SCALING_FACTOR_WIDTH = clog2_l(CIC_R)*CIC_N;
+localparam      SCALING_FACTOR_WIDTH = clog2_l(clog2_l(CIC_R)*CIC_N)+1;
 localparam      SCALING_FACTOR_WIDTH2 = clog2_l(CIC_R)*CIC_N + 3;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor = 0;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     scaling_factor_buf = 0;
@@ -66,10 +66,10 @@ function integer get_prune_bits(input integer i);
     end
 endfunction
 
-typedef bit unsigned [SCALING_FACTOR_WIDTH-1:0] LUT_t [1:CIC_R]; // possible rates are 1..CIC_R
-(* ramstyle = "distributed" *)LUT_t LUT;
-typedef bit unsigned [SCALING_FACTOR_WIDTH2-1:0] LUT2_t [1:CIC_R]; // possible rates are 1..CIC_R
-(* ramstyle = "distributed" *)LUT2_t LUT2;
+typedef reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT_t [1:CIC_R]; // possible rates are 1..CIC_R
+(* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT [1:CIC_R];
+typedef reg unsigned [SCALING_FACTOR_WIDTH2-1:0] LUT2_t [1:CIC_R]; // possible rates are 1..CIC_R
+(* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH2-1:0]  LUT2 [1:CIC_R];
 
 integer k;
 initial begin
