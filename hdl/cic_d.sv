@@ -54,49 +54,48 @@ localparam      SCALING_FACTOR_WIDTH2 = clog2_l(clog2_l(CIC_R)*CIC_N)+SCALING_FA
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor = 0;
 reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     current_scaling_factor2 = ((base2**clog2_l(Gain_max))<<SCALING_FACTOR_SHIFT)/Gain_max;
 
-generate
-    if  (VARIABLE_RATE) begin
-        (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT [1:CIC_R];
-        (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH2-1:0]  LUT2 [1:CIC_R];
+if  (VARIABLE_RATE) begin
+    (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT [1:CIC_R];
+    (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH2-1:0]  LUT2 [1:CIC_R];
 
-        reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     scaling_factor_buf = 0;
-        reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     scaling_factor_buf2 = 0;
-        always @(posedge clk)
-        begin
-            if (!reset_n) begin
-                current_scaling_factor <= 0;
-                scaling_factor_buf <= 0;
-                current_scaling_factor2 <= 0;
-                scaling_factor_buf2 <= 0;
-            end
-            else if (s_axis_rate_tvalid) begin
-                scaling_factor_buf <= LUT[s_axis_rate_tdata];
-                scaling_factor_buf2 <= LUT2[s_axis_rate_tdata];
-                // $display("pre_shift = %d   rate = %d  lut-width = %d" , LUT[s_axis_rate_tdata], s_axis_rate_tdata,SCALING_FACTOR_WIDTH);
-            end
-            current_scaling_factor <= scaling_factor_buf;
-            current_scaling_factor2 <= scaling_factor_buf2;
+    reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     scaling_factor_buf = 0;
+    reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     scaling_factor_buf2 = 0;
+    always @(posedge clk)
+    begin
+        if (!reset_n) begin
+            current_scaling_factor <= 0;
+            scaling_factor_buf <= 0;
+            current_scaling_factor2 <= 0;
+            scaling_factor_buf2 <= 0;
         end
-
-        bit unsigned [127:0] k;
-        localparam bit unsigned [127:0] R_extended = CIC_R;
-        initial begin
-            reg unsigned [31:0] pre_shift;
-            reg unsigned [127:0] post_mult;
-            reg unsigned [127:0] gain_diff;
-            reg unsigned [clog2_l(CIC_R):0] small_k;
-            for(k=1;k<=CIC_R;k=k+1) begin
-                small_k = k[clog2_l(CIC_R):0];
-                gain_diff = (((R_extended<<(SCALING_FACTOR_SHIFT/CIC_N))/k)**CIC_N);
-                pre_shift = flog2_l(gain_diff>>(SCALING_FACTOR_SHIFT)); 
-                post_mult = (gain_diff >> pre_shift);
-                LUT[small_k] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
-                LUT2[small_k] = post_mult[SCALING_FACTOR_WIDTH2-1:0];
-                $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", k, LUT[small_k], base2**pre_shift, gain_diff>>SCALING_FACTOR_SHIFT, LUT2[small_k]);
-            end
-        end        
+        else if (s_axis_rate_tvalid) begin
+            scaling_factor_buf <= LUT[s_axis_rate_tdata];
+            scaling_factor_buf2 <= LUT2[s_axis_rate_tdata];
+            // $display("pre_shift = %d   rate = %d  lut-width = %d" , LUT[s_axis_rate_tdata], s_axis_rate_tdata,SCALING_FACTOR_WIDTH);
+        end
+        current_scaling_factor <= scaling_factor_buf;
+        current_scaling_factor2 <= scaling_factor_buf2;
     end
-endgenerate
+
+    bit unsigned [127:0] k;
+    localparam bit unsigned [127:0] R_extended = CIC_R;
+    initial begin
+        reg unsigned [31:0] pre_shift;
+        reg unsigned [127:0] post_mult;
+        reg unsigned [127:0] gain_diff;
+        reg unsigned [clog2_l(CIC_R):0] small_k;
+        for(k=1;k<=CIC_R;k=k+1) begin
+            small_k = k[clog2_l(CIC_R):0];
+            gain_diff = (((R_extended<<(SCALING_FACTOR_SHIFT/CIC_N))/k)**CIC_N);
+            pre_shift = flog2_l(gain_diff>>(SCALING_FACTOR_SHIFT)); 
+            post_mult = (gain_diff >> pre_shift);
+            LUT[small_k] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
+            LUT2[small_k] = post_mult[SCALING_FACTOR_WIDTH2-1:0];
+            $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", k, LUT[small_k], base2**pre_shift, gain_diff>>SCALING_FACTOR_SHIFT, LUT2[small_k]);
+        end
+    end        
+end
+
 
 genvar  i;
 generate
@@ -278,38 +277,49 @@ generate
     end
 endgenerate
 /*********************************************************************************************/
-reg             signed [OUT_DW-1+SCALING_FACTOR_SHIFT:0]   comb_out_samp_data_reg;
-reg                                     comb_out_samp_str_reg;
-
-reg             signed [OUT_DW-1+SCALING_FACTOR_SHIFT:0]   out_data_buf;
-reg                                   out_valid_buf;
-
+reg             signed [OUT_DW-1+SCALING_FACTOR_SHIFT:0]    comb_out_samp_data_reg;
+reg                                                         comb_out_samp_str_reg;
+reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     current_scaling_factor2_reg;
 
 always @(posedge clk)
 begin
-    if      (~reset_n)                      comb_out_samp_data_reg <= '0;
-    else if (comb_chain_out_str) begin
+    if      (~reset_n) begin
+        comb_out_samp_data_reg <= '0;        
+        comb_out_samp_str_reg <= '0;
+    end 
+    else begin
         comb_out_samp_data_reg <= {{SCALING_FACTOR_SHIFT{comb_stage[CIC_N - 1].comb_out[dw_out - 1]}},{(comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW])}};    
+        current_scaling_factor2_reg <= current_scaling_factor2;
+        comb_out_samp_str_reg <= comb_chain_out_str;
     end
 end
 
+localparam OUT_PIPELINE_STAGES = 2;
+reg             signed [OUT_DW-1+SCALING_FACTOR_SHIFT:0]    out_data_buf[0:OUT_PIPELINE_STAGES-1];
+reg             [OUT_PIPELINE_STAGES-1:0]                   out_valid_buf;
+
 always @(posedge clk)
     if      (~reset_n) begin
-        comb_out_samp_str_reg <= '0;
-        out_valid_buf <= 0;
-        out_data_buf <= 0;
+        out_valid_buf <= {OUT_PIPELINE_STAGES{1'b0}};
+        foreach(out_data_buf[j])
+            out_data_buf[j] <= 0;
     end
     else begin                           
-        comb_out_samp_str_reg <= comb_chain_out_str;
         if (EXACT_SCALING)
-            out_data_buf <= (comb_out_samp_data_reg * current_scaling_factor2)>>SCALING_FACTOR_SHIFT;  
+            out_data_buf[0] <= (comb_out_samp_data_reg * current_scaling_factor2_reg)>>SCALING_FACTOR_SHIFT;  
         else
-            out_data_buf <= comb_out_samp_data_reg;
-        out_valid_buf <= comb_out_samp_str_reg;
+            out_data_buf[0] <= comb_out_samp_data_reg;
+        out_valid_buf[0] <= comb_out_samp_str_reg;
+        for (integer j = 0; j < (OUT_PIPELINE_STAGES-1); j = j + 1) begin 
+            out_data_buf[j+1] <= out_data_buf[j];
+            out_valid_buf[j+1] <= out_valid_buf[j];
+        end
     end
 
-assign m_axis_out_tdata      = out_data_buf[OUT_DW-1:0];
-assign m_axis_out_tvalid     = out_valid_buf;
+wire unsigned [OUT_DW-1+SCALING_FACTOR_SHIFT:0] out_pipeline_output;
+assign out_pipeline_output = out_data_buf[OUT_PIPELINE_STAGES-1];
+assign m_axis_out_tdata      = out_pipeline_output[OUT_DW-1:0];
+assign m_axis_out_tvalid     = out_valid_buf[OUT_PIPELINE_STAGES-1];
 /*********************************************************************************************/
 
 `ifdef COCOTB_SIM
