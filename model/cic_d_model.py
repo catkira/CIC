@@ -5,7 +5,7 @@ import math
 import numpy as np
 
 class Model:
-    def __init__(self, R, N ,M, INP_DW, OUT_DW, VARIABLE_RATE=0, register_pruning=1):
+    def __init__(self, R, N ,M, INP_DW, OUT_DW, VARIABLE_RATE, EXACT_SCALING, register_pruning=1):
         self.R = R
         self.N = N
         self.M = M
@@ -13,6 +13,7 @@ class Model:
         self.OUT_DW = OUT_DW
         self.register_pruning = register_pruning
         self.VARIABLE_RATE = VARIABLE_RATE
+        self.EXACT_SCALING = EXACT_SCALING
 
         self.cic_taps = np.zeros(R * M * N)
         self.cic_push_ptr = 0
@@ -36,8 +37,8 @@ class Model:
         self.in_valid = 0
         self.decimation_counter = 0;
 
-        CIC_Filter_Gain = (self.R*self.M)**self.N        
-        Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
+        self.CIC_Filter_Gain = (self.R*self.M)**self.N        
+        Num_of_Bits_Growth = np.ceil(math.log2(self.CIC_Filter_Gain))
         self.Num_Output_Bits_Without_Truncation = Num_of_Bits_Growth + self.INP_DW 
         print(f"B_max: {self.Num_Output_Bits_Without_Truncation}")
 
@@ -116,4 +117,9 @@ class Model:
         return self.data_out_buf_2[self.extra_delay_2]
 
     def get_scaled_data(self):
-        return int(self.cic_model_stage_get_out(self.N - 1)) >> int(self.Num_Output_Bits_Without_Truncation - self.OUT_DW)
+        if self.EXACT_SCALING:
+            return int(self.cic_model_stage_get_out(self.N - 1) / self.CIC_Filter_Gain)*(2**(self.OUT_DW-self.INP_DW));
+            #return int(self.cic_model_stage_get_out(self.N - 1)) >> int(self.Num_Output_Bits_Without_Truncation - self.OUT_DW)
+        else:
+            return int(self.cic_model_stage_get_out(self.N - 1)) >> int(self.Num_Output_Bits_Without_Truncation - self.OUT_DW)
+        

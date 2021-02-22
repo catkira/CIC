@@ -29,6 +29,7 @@ class TB(object):
         self.INP_DW = int(dut.INP_DW)
         self.OUT_DW = int(dut.OUT_DW)
         self.VARIABLE_RATE = int(dut.VARIABLE_RATE)
+        self.EXACT_SCALING = int(dut.EXACT_SCALING)
 
         self.log = logging.getLogger("cocotb.tb")
         self.log.setLevel(logging.DEBUG)        
@@ -40,7 +41,7 @@ class TB(object):
         spec = importlib.util.spec_from_file_location("cic_d_model", model_dir)
         foo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(foo)
-        self.model = foo.Model(self.R, self.N, self.M, self.INP_DW, self.OUT_DW, self.VARIABLE_RATE) 
+        self.model = foo.Model(self.R, self.N, self.M, self.INP_DW, self.OUT_DW, self.VARIABLE_RATE, self.EXACT_SCALING) 
         cocotb.fork(Clock(self.dut.clk, CLK_PERIOD_NS, units='ns').start())
         cocotb.fork(self.model_clk())    
         
@@ -82,6 +83,9 @@ async def simple_test(dut):
     output = []
     output_model = []
     tolerance = 1
+    if tb.EXACT_SCALING:
+        # exact scaling needs a bit more tolerance because of rounding errors
+        tolerance = 0.005
     count = 0;
     max_count = num_items * tb.R * 2;
     max_out_value = (2**(tb.OUT_DW-1)-1)
@@ -103,7 +107,10 @@ async def simple_test(dut):
             assert False, "not enough items received"
     
     for i in range(num_items):
-        assert np.abs(output[i] - output_model[i]) <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"    
+        if tb.EXACT_SCALING:
+            assert np.abs(output[i] - output_model[i])/max_out_value <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"
+        else:
+            assert np.abs(output[i] - output_model[i]) <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"
     #print(f"received {len(output)} samples")
     gen.kill()
     
@@ -127,6 +134,9 @@ async def variable_rate_test(dut):
         output_model = []
         gen = cocotb.fork(tb.generate_input())
         tolerance = 1
+        if tb.EXACT_SCALING:
+            # exact scaling needs a bit more tolerance because of rounding errors
+            tolerance = 0.005        
         count = 0;
         max_count = num_items * rate * 2;
         max_out_value = (2**(tb.OUT_DW-1)-1)
@@ -134,21 +144,24 @@ async def variable_rate_test(dut):
             await RisingEdge(dut.clk)
             if(tb.model.data_valid()):
                 output_model.append(tb.model.get_data())
-                #print(f"model:\t[{len(output_model)}]\t {int(output_model[-1])} \t {output_model[-1]/max_out_value}")
+                print(f"model:\t[{len(output_model)}]\t {int(output_model[-1])} \t {output_model[-1]/max_out_value}")
 
             if dut.m_axis_out_tvalid == 1:
                 a=dut.m_axis_out_tdata.value.integer
                 if (a & (1 << (tb.OUT_DW - 1))) != 0:
                     a = a - (1 << tb.OUT_DW)
                 output.append(a)
-                #print(f"hdl: \t[{len(output)}]\t {int(a)} \t {a/max_out_value} ")
+                print(f"hdl: \t[{len(output)}]\t {int(a)} \t {a/max_out_value} ")
             #print(f"{int(tb.model.data_valid())} {dut.m_axis_out_tvalid}")
             count += 1
             if count > max_count:
                 assert False, "not enough items received"        
         gen.kill()
         for i in range(num_items):
-            assert np.abs(output[i] - output_model[i]) <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"
+            if tb.EXACT_SCALING:
+                assert np.abs(output[i] - output_model[i])/max_out_value <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"
+            else:
+                assert np.abs(output[i] - output_model[i]) <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"
 # cocotb-test
 
 
@@ -168,7 +181,7 @@ def calculate_prune_bits(R, N, M, INP_DW, OUT_DW):
         ret += int(B_j[i])<<(32*(i))
     return ret
 
-@pytest.mark.parametrize("R", [10, 100])
+@pytest.mark.parametrize("R", [100, 10])
 @pytest.mark.parametrize("N", [6, 3])
 @pytest.mark.parametrize("M", [1, 3])
 @pytest.mark.parametrize("INP_DW", [16])
@@ -176,7 +189,8 @@ def calculate_prune_bits(R, N, M, INP_DW, OUT_DW):
 @pytest.mark.parametrize("RATE_DW", [16])
 @pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [0, 1])
 @pytest.mark.parametrize("VARIABLE_RATE", [0])
-def test_cic_d(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VARIABLE_RATE, PRECALCULATE_PRUNE_BITS):
+@pytest.mark.parametrize("EXACT_SCALING", [1, 0])
+def test_cic_d(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VARIABLE_RATE, EXACT_SCALING, PRECALCULATE_PRUNE_BITS):
     dut = "cic_d"
     module = os.path.splitext(os.path.basename(__file__))[0]
     toplevel = dut
@@ -202,6 +216,7 @@ def test_cic_d(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VARIABLE_RATE, PRECALC
     parameters['OUT_DW'] = OUT_DW
     parameters['RATE_DW'] = RATE_DW
     parameters['VARIABLE_RATE'] = VARIABLE_RATE
+    parameters['EXACT_SCALING'] = EXACT_SCALING    
     if PRECALCULATE_PRUNE_BITS:
         parameters['PRUNE_BITS'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
 
@@ -227,7 +242,8 @@ def test_cic_d(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VARIABLE_RATE, PRECALC
 @pytest.mark.parametrize("RATE_DW", [16])
 @pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [1])
 @pytest.mark.parametrize("VARIABLE_RATE", [1])
-def test_cic_d_variable_rate(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VARIABLE_RATE, PRECALCULATE_PRUNE_BITS):
+@pytest.mark.parametrize("EXACT_SCALING", [1, 0])
+def test_cic_d_variable_rate(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VARIABLE_RATE, EXACT_SCALING, PRECALCULATE_PRUNE_BITS):
     dut = "cic_d"
     module = os.path.splitext(os.path.basename(__file__))[0]
     toplevel = dut
@@ -253,6 +269,7 @@ def test_cic_d_variable_rate(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VARIABLE
     parameters['OUT_DW'] = OUT_DW
     parameters['RATE_DW'] = RATE_DW
     parameters['VARIABLE_RATE'] = VARIABLE_RATE
+    parameters['EXACT_SCALING'] = EXACT_SCALING
     if PRECALCULATE_PRUNE_BITS:
         parameters['PRUNE_BITS'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
 

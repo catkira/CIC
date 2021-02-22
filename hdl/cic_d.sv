@@ -11,7 +11,8 @@ module cic_d
     parameter CIC_M = 1,            // delay in comb
     /* verilator lint_off WIDTH */
     parameter [32*(CIC_N*2+2)-1:0] PRUNE_BITS = {(CIC_N*2+2){32'd0}},   // stage width can be given as a parameter to speed up synthesis
-    parameter VARIABLE_RATE = 1
+    parameter VARIABLE_RATE = 1,
+    parameter EXACT_SCALING = 1
 )
 /*********************************************************************************************/
 (
@@ -27,8 +28,11 @@ module cic_d
 /*********************************************************************************************/
 `include "cic_functions.vh"
 /*********************************************************************************************/
-localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW ;
+localparam      Gain_max = (CIC_R * CIC_M) ** CIC_N;
+localparam      B_max = clog2_l(Gain_max) + INP_DW;
+localparam      truncated_bits = B_max - OUT_DW;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N);
+localparam bit unsigned [127:0] base2 = 2;
 /*********************************************************************************************/
 
 function integer get_prune_bits(input integer i);
@@ -48,7 +52,7 @@ localparam      SCALING_FACTOR_WIDTH = clog2_l(clog2_l(CIC_R)*CIC_N)+1;
 localparam      SCALING_FACTOR_SHIFT = 5*CIC_N;
 localparam      SCALING_FACTOR_WIDTH2 = clog2_l(clog2_l(CIC_R)*CIC_N)+SCALING_FACTOR_SHIFT+1;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor = 0;
-reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     current_scaling_factor2 = 1;
+reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     current_scaling_factor2 = ((base2**clog2_l(Gain_max))<<SCALING_FACTOR_SHIFT)/Gain_max;
 
 generate
     if  (VARIABLE_RATE) begin
@@ -75,7 +79,6 @@ generate
         end
 
         bit unsigned [127:0] k;
-        localparam bit unsigned [127:0] base2 = 2;
         localparam bit unsigned [127:0] R_extended = CIC_R;
         initial begin
             reg unsigned [31:0] pre_shift;
@@ -298,10 +301,8 @@ always @(posedge clk)
     end
     else begin                           
         comb_out_samp_str_reg <= comb_chain_out_str;
-        if(VARIABLE_RATE)
-            // why is this scaling not needed?
-            //out_data_buf <= (comb_out_samp_data_reg * current_scaling_factor2)>>SCALING_FACTOR_SHIFT;  
-            out_data_buf <= comb_out_samp_data_reg;
+        if (EXACT_SCALING)
+            out_data_buf <= (comb_out_samp_data_reg * current_scaling_factor2)>>SCALING_FACTOR_SHIFT;  
         else
             out_data_buf <= comb_out_samp_data_reg;
         out_valid_buf <= comb_out_samp_str_reg;
