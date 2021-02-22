@@ -9,6 +9,7 @@ module cic_d
     parameter CIC_R = 10,           // decimation ratio, if VARIABLE_RATE = 1, R has to be set to the maximum decimation ratio
     parameter CIC_N = 7,            // number of stages
     parameter CIC_M = 1,            // delay in comb
+    /* verilator lint_off WIDTH */
     parameter [32*(CIC_N*2+2)-1:0] PRUNE_BITS = {(CIC_N*2+2){32'd0}},   // stage width can be given as a parameter to speed up synthesis
     parameter VARIABLE_RATE = 1
 )
@@ -28,33 +29,6 @@ module cic_d
 /*********************************************************************************************/
 localparam      B_max = clog2_l((CIC_R * CIC_M) ** CIC_N) + INP_DW ;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N);
-localparam      SCALING_FACTOR_WIDTH = clog2_l(clog2_l(CIC_R)*CIC_N)+1;
-localparam      SCALING_FACTOR_SHIFT = 5;
-localparam      SCALING_FACTOR_WIDTH2 = clog2_l(clog2_l(CIC_R)*CIC_N)+SCALING_FACTOR_SHIFT+1;
-reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor = 0;
-reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     scaling_factor_buf = 0;
-reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     current_scaling_factor2 = 0;
-reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     scaling_factor_buf2 = 0;
-
-(* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT [1:CIC_R];
-(* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH2-1:0]  LUT2 [1:CIC_R];
-
-always @(posedge clk)
-begin
-    if (!reset_n) begin
-        current_scaling_factor <= 0;
-        scaling_factor_buf <= 0;
-        current_scaling_factor2 <= 0;
-        scaling_factor_buf2 <= 0;
-    end
-    else if (s_axis_rate_tvalid) begin
-        scaling_factor_buf <= LUT[s_axis_rate_tdata];
-        scaling_factor_buf2 <= LUT2[s_axis_rate_tdata];
-        // $display("pre_shift = %d   rate = %d  lut-width = %d" , LUT[s_axis_rate_tdata], s_axis_rate_tdata,SCALING_FACTOR_WIDTH);
-    end
-    current_scaling_factor <= scaling_factor_buf;
-    current_scaling_factor2 <= scaling_factor_buf2;
-end
 /*********************************************************************************************/
 
 function integer get_prune_bits(input integer i);
@@ -69,22 +43,57 @@ function integer get_prune_bits(input integer i);
     end
 endfunction
 
-bit unsigned [127:0] k;
-localparam bit unsigned [127:0] base2 = 2;
-localparam bit unsigned [127:0] R_extended = CIC_R;
-initial begin
-    reg unsigned [31:0] pre_shift;
-    reg unsigned [127:0] post_mult;
-    reg unsigned [clog2_l(CIC_R):0] small_k;
-    for(k=1;k<=CIC_R;k=k+1) begin
-        small_k = k[clog2_l(CIC_R):0];
-        pre_shift = flog2_l((R_extended/k)**CIC_N); 
-        post_mult = (((CIC_R/k)**CIC_N)<<SCALING_FACTOR_SHIFT) / (base2**flog2_l(((R_extended/k)**CIC_N)));
-        LUT[small_k] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
-        LUT2[small_k] = post_mult[SCALING_FACTOR_WIDTH2-1:0];
-        //$display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", k, LUT[small_k], base2**flog2_l((R_extended/k)**CIC_N), (R_extended/k)**CIC_N, LUT2[small_k]);
+
+localparam      SCALING_FACTOR_WIDTH = clog2_l(clog2_l(CIC_R)*CIC_N)+1;
+localparam      SCALING_FACTOR_SHIFT = 5*CIC_N;
+localparam      SCALING_FACTOR_WIDTH2 = clog2_l(clog2_l(CIC_R)*CIC_N)+SCALING_FACTOR_SHIFT+1;
+reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor = 0;
+reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     current_scaling_factor2 = 1;
+
+generate
+    if  (VARIABLE_RATE) begin
+        (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT [1:CIC_R];
+        (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH2-1:0]  LUT2 [1:CIC_R];
+
+        reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     scaling_factor_buf = 0;
+        reg unsigned       [SCALING_FACTOR_WIDTH2-1:0]     scaling_factor_buf2 = 0;
+        always @(posedge clk)
+        begin
+            if (!reset_n) begin
+                current_scaling_factor <= 0;
+                scaling_factor_buf <= 0;
+                current_scaling_factor2 <= 0;
+                scaling_factor_buf2 <= 0;
+            end
+            else if (s_axis_rate_tvalid) begin
+                scaling_factor_buf <= LUT[s_axis_rate_tdata];
+                scaling_factor_buf2 <= LUT2[s_axis_rate_tdata];
+                // $display("pre_shift = %d   rate = %d  lut-width = %d" , LUT[s_axis_rate_tdata], s_axis_rate_tdata,SCALING_FACTOR_WIDTH);
+            end
+            current_scaling_factor <= scaling_factor_buf;
+            current_scaling_factor2 <= scaling_factor_buf2;
+        end
+
+        bit unsigned [127:0] k;
+        localparam bit unsigned [127:0] base2 = 2;
+        localparam bit unsigned [127:0] R_extended = CIC_R;
+        initial begin
+            reg unsigned [31:0] pre_shift;
+            reg unsigned [127:0] post_mult;
+            reg unsigned [127:0] gain_diff;
+            reg unsigned [clog2_l(CIC_R):0] small_k;
+            for(k=1;k<=CIC_R;k=k+1) begin
+                small_k = k[clog2_l(CIC_R):0];
+                gain_diff = (((R_extended<<(SCALING_FACTOR_SHIFT/CIC_N))/k)**CIC_N);
+                pre_shift = flog2_l(gain_diff>>(SCALING_FACTOR_SHIFT)); 
+                post_mult = (gain_diff >> pre_shift);
+                LUT[small_k] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
+                LUT2[small_k] = post_mult[SCALING_FACTOR_WIDTH2-1:0];
+                $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", k, LUT[small_k], base2**pre_shift, gain_diff>>SCALING_FACTOR_SHIFT, LUT2[small_k]);
+            end
+        end        
     end
-end
+endgenerate
 
 genvar  i;
 generate
@@ -182,7 +191,6 @@ if (VARIABLE_RATE) begin
                 data_buf[j] <= 0;
         end
         else begin
-            // data_buf[0] <= int_stage[CIC_N - 1].int_out * current_scaling_factor;
             data_buf[0] <= int_stage[CIC_N - 1].int_out;
             valid_buf[0] <= s_axis_in_tvalid;
             for (integer j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
@@ -290,7 +298,12 @@ always @(posedge clk)
     end
     else begin                           
         comb_out_samp_str_reg <= comb_chain_out_str;
-        out_data_buf <= (comb_out_samp_data_reg * current_scaling_factor2)>>SCALING_FACTOR_SHIFT;
+        if(VARIABLE_RATE)
+            // why is this scaling not needed?
+            //out_data_buf <= (comb_out_samp_data_reg * current_scaling_factor2)>>SCALING_FACTOR_SHIFT;  
+            out_data_buf <= comb_out_samp_data_reg;
+        else
+            out_data_buf <= comb_out_samp_data_reg;
         out_valid_buf <= comb_out_samp_str_reg;
     end
 
@@ -302,7 +315,7 @@ assign m_axis_out_tvalid     = out_valid_buf;
 initial begin
   $dumpfile ("cic_d.vcd");
   $dumpvars (0, cic_d);
-  #1;
+  //#1;
 end
 `endif
 

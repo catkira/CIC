@@ -5,25 +5,34 @@ import math
 import numpy as np
 
 class Model:
-    def __init__(self, R, N ,M, INP_DW, OUT_DW, register_pruning=1):
+    def __init__(self, R, N ,M, INP_DW, OUT_DW, VARIABLE_RATE=0, register_pruning=1):
         self.R = R
         self.N = N
         self.M = M
         self.INP_DW = INP_DW
         self.OUT_DW = OUT_DW
         self.register_pruning = register_pruning
+        self.VARIABLE_RATE = VARIABLE_RATE
 
         self.cic_taps = np.zeros(R * M * N)
         self.cic_push_ptr = 0
         self.data_in_buf = 0
         
-        self.extra_delay   = 1 + (self.N)*3       # extra delay before downsampler
-        self.extra_delay_2 = 4 + (self.N-1)*2     # extra delay after downsampler
+        if VARIABLE_RATE:
+            self.extra_delay   = 1 + (self.N-1)*3     
+            self.downsampler_delay = 4
+            self.extra_delay_2 = 10 + (self.N-1)*1 
+        else:
+            self.extra_delay   = 1                   
+            self.downsampler_delay = 0
+            self.extra_delay_2 = 4 + (self.N-1)*1 
             
         self.data_out_buf = np.zeros(self.extra_delay+1)
         self.data_out_buf_2 = np.zeros(self.extra_delay_2+1)
         self.out_valid = np.zeros(self.extra_delay+1)
         self.out_valid_2 = np.zeros(self.extra_delay_2+1)
+        self.valid_downsampler = np.zeros(self.downsampler_delay+1)
+        self.data_downsampler = np.zeros(self.downsampler_delay+1)
         self.in_valid = 0
         self.decimation_counter = 0;
 
@@ -75,16 +84,23 @@ class Model:
         self.data_out_buf[0] = self.get_scaled_data()
         for i in np.arange(self.extra_delay-1,-1,-1):
             self.data_out_buf[i+1] = self.data_out_buf[i]
-            self.out_valid[i+1] = self.out_valid[i]
+            #self.out_valid[i+1] = self.out_valid[i]  # not used
+            
+        # model pipelining before downsampler
+        self.valid_downsampler[0] = self.out_valid[0];
+        self.data_downsampler[0] = self.data_out_buf[self.extra_delay]
+        for i in np.arange(self.downsampler_delay-1,-1,-1):
+            self.valid_downsampler[i+1] = self.valid_downsampler[i]
+            self.data_downsampler[i+1] = self.data_downsampler[i]
             
         self.decimation_counter = self.decimation_counter + 1 if self.decimation_counter < (self.R-1) else 0
         
-        if self.out_valid[self.extra_delay] == 1 and self.decimation_counter == self.R-1:
+        if self.valid_downsampler[self.downsampler_delay] and self.decimation_counter == self.R-1:
             self.out_valid_2[0] = 1
         else:
             self.out_valid_2[0] = 0
             
-        self.data_out_buf_2[0] = self.data_out_buf[self.extra_delay]
+        self.data_out_buf_2[0] = self.data_downsampler[self.downsampler_delay]
         for i in np.arange(self.extra_delay_2-1,-1,-1):
             self.data_out_buf_2[i+1] = self.data_out_buf_2[i]
             self.out_valid_2[i+1] = self.out_valid_2[i]
