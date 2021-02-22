@@ -17,6 +17,7 @@ import numpy as np
 import importlib.util
 
 CLK_PERIOD_NS = 8
+CLK_PERIOD_S = CLK_PERIOD_NS * 0.000000001
 
 class TB(object):
     def __init__(self,dut):
@@ -50,7 +51,8 @@ class TB(object):
     async def generate_input(self):
         phase = 0
         freq = 10000
-        phase_step = CLK_PERIOD_NS * 2 * freq * math.pi * 0.000000001
+        phase_step = CLK_PERIOD_S * 2 * freq * math.pi
+        print(F"normalized freq = {CLK_PERIOD_S*freq:.12f} Hz")
         self.input = []
         while True:
             phase += phase_step
@@ -82,18 +84,19 @@ async def simple_test(dut):
     tolerance = 1
     count = 0;
     max_count = num_items * tb.R * 2;
+    max_out_value = (2**(tb.OUT_DW-1)-1)
     while len(output_model) < num_items or len(output) < num_items:
         await RisingEdge(dut.clk)
         if(tb.model.data_valid()):
             output_model.append(tb.model.get_data())
-            #print(f"model: {output_model[-1]} [{len(output_model)}]")
+            #print(f"model:\t[{len(output_model)}]\t {int(output_model[-1])} \t {output_model[-1]/max_out_value}")
 
         if dut.m_axis_out_tvalid == 1:
             a=dut.m_axis_out_tdata.value.integer
             if (a & (1 << (tb.OUT_DW - 1))) != 0:
                 a = a - (1 << tb.OUT_DW)
             output.append(a)
-            #print(f"hdl: {a} [{len(output)}]")
+            #print(f"hdl: \t[{len(output)}]\t {int(a)} \t {a/max_out_value} ")
         #print(f"{int(tb.model.data_valid())} {dut.m_axis_out_tvalid}")
         count += 1
         if count > max_count:
@@ -126,18 +129,19 @@ async def variable_rate_test(dut):
         tolerance = 1
         count = 0;
         max_count = num_items * rate * 2;
+        max_out_value = (2**(tb.OUT_DW-1)-1)
         while len(output_model) < num_items or len(output) < num_items:
             await RisingEdge(dut.clk)
             if(tb.model.data_valid()):
                 output_model.append(tb.model.get_data())
-                print(f"model: {output_model[-1]} [{len(output_model)}]")
+                #print(f"model:\t[{len(output_model)}]\t {int(output_model[-1])} \t {output_model[-1]/max_out_value}")
 
             if dut.m_axis_out_tvalid == 1:
                 a=dut.m_axis_out_tdata.value.integer
                 if (a & (1 << (tb.OUT_DW - 1))) != 0:
                     a = a - (1 << tb.OUT_DW)
                 output.append(a)
-                print(f"hdl: {a} [{len(output)}]")
+                #print(f"hdl: \t[{len(output)}]\t {int(a)} \t {a/max_out_value} ")
             #print(f"{int(tb.model.data_valid())} {dut.m_axis_out_tvalid}")
             count += 1
             if count > max_count:
