@@ -297,7 +297,7 @@ end
 localparam OUT_PIPELINE_STAGES = 2;
 reg             signed [OUT_DW-1+SCALING_FACTOR_SHIFT:0]    out_data_buf[0:OUT_PIPELINE_STAGES-1];
 reg             [OUT_PIPELINE_STAGES-1:0]                   out_valid_buf;
-wire [OUT_DW-1+SCALING_FACTOR_SHIFT:0] out_mult_result;
+wire signed [OUT_DW-1+SCALING_FACTOR_SHIFT:0] out_mult_result;
 assign out_mult_result = comb_out_samp_data_reg * current_scaling_factor2_reg;
 
 always @(posedge clk)
@@ -309,6 +309,7 @@ always @(posedge clk)
     else begin                           
         if (EXACT_SCALING)
             out_data_buf[0] <= {{SCALING_FACTOR_SHIFT{out_mult_result[OUT_DW-1+SCALING_FACTOR_SHIFT]}},{out_mult_result[OUT_DW-1+SCALING_FACTOR_SHIFT:SCALING_FACTOR_SHIFT]}};  
+            // out_data_buf[0] <= out_mult_result >>> SCALING_FACTOR_SHIFT;   // why is this not working???
         else
             out_data_buf[0] <= comb_out_samp_data_reg;
         out_valid_buf[0] <= comb_out_samp_str_reg;
