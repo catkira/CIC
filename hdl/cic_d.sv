@@ -28,7 +28,7 @@ module cic_d
 /*********************************************************************************************/
 `include "cic_functions.vh"
 /*********************************************************************************************/
-localparam      Gain_max = (CIC_R * CIC_M) ** CIC_N;
+localparam bit unsigned [127:0]     Gain_max = (CIC_R * CIC_M) ** CIC_N;
 localparam      B_max = clog2_l(Gain_max) + INP_DW;
 localparam      truncated_bits = B_max - OUT_DW;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N);
