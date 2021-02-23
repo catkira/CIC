@@ -80,6 +80,8 @@ if  (VARIABLE_RATE) begin
     end
 
     initial begin
+        // this LUT calculation in verilog is limited, it works for R=4095, N=6, M=1
+        // if larger values are needed, do LUT calculation outside verilog, ie python
         bit unsigned [127:0] k;
         localparam bit unsigned [127:0] R_extended = CIC_R;
         reg unsigned [127:0] gain_diff;
