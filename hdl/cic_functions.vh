@@ -15,7 +15,7 @@ function reg unsigned [127 : 0] nchoosek;	///< Binomial coefficient
 	begin
 		tmp = 1.0;
 		for (i = 1; i <= (n - k); i = i + 1)
-			tmp = tmp * (k + i) / i;
+			tmp = tmp * (128'(k) + 128'(i)) / 128'(i);
 		nchoosek = tmp;
 	end
 endfunction
@@ -43,7 +43,7 @@ function integer B_max_calc;
 	input integer INP_DW;
 	reg unsigned [127:0] RMpN;
 	begin
-		RMpN = (R * M) ** N;
+		RMpN = (128'(R) * M) ** N;
 		B_max_calc = clog2_l(RMpN) + INP_DW;
 		//$display("B_max_calc: N=%2d, R=%2d, M=%2d, ret=%2d", N, R, M, B_max_calc);
 	end
@@ -92,13 +92,13 @@ function reg signed [127:0] h_calc;
 				prod_1 = nchoosek(N, i);
 				prod_2 = nchoosek(N - j + k - R * M * i, k - R * M * i);
 				summ = prod_1 * prod_2;
-				if (i % 2) summ = -summ;
+				if ((i % 2) == 1) summ = -summ;
 				tmp = tmp + summ;
 			end
 		end
 		else begin
 			tmp = nchoosek(2 * N + 1 - j, k);
-			if (k % 2) tmp = -tmp;
+			if ((k % 2) == 1) tmp = -tmp;
 		end
 		h_calc = tmp;
 	end
@@ -149,11 +149,11 @@ function integer B_calc;
 			if (j == 2 * N + 1) begin
 				B_calc = B_max - dw_out;
 			end else begin
-				B_2Np1 = B_max - dw_out;
+				B_2Np1 = {{(128-32){1'b0}},B_max - dw_out};
 				F_sq_j = F_sq_calc(j, N, R, M);
 				F_sq_2Np1 = F_sq_calc(2 * N + 1, N, R, M);
 				sigma_T_2Np1_sq = (128'b1 << (2 * B_2Np1)) * F_sq_2Np1 / 12;
-				B_exp_real = (sigma_T_2Np1_sq / F_sq_j * 6 / N);
+				B_exp_real = (sigma_T_2Np1_sq / F_sq_j * 6 / 128'(N));
 				B_out = flog2_l(B_exp_real) / 2;
 				B_calc = B_out;
 			end

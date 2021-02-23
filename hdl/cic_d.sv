@@ -32,7 +32,6 @@ localparam bit unsigned [127:0]     Gain_max = (CIC_R * CIC_M) ** CIC_N;
 localparam      B_max = clog2_l(Gain_max) + INP_DW;
 localparam      truncated_bits = B_max - OUT_DW;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N);
-localparam bit unsigned [127:0] base2 = 2;
 /*********************************************************************************************/
 
 function integer get_prune_bits(input integer i);
@@ -52,7 +51,7 @@ localparam      SCALING_FACTOR_WIDTH = clog2_l(clog2_l(CIC_R)*CIC_N)+1;
 localparam      SCALING_FACTOR_SHIFT = 5*CIC_N;
 localparam      EXACT_SCALING_FACTOR_WIDTH = clog2_l(clog2_l(CIC_R)*CIC_N)+SCALING_FACTOR_SHIFT+1;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor = 0;
-reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0]     current_exact_scaling_factor = ((base2**clog2_l(Gain_max))<<SCALING_FACTOR_SHIFT)/Gain_max;
+reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0]     current_exact_scaling_factor = (((128'(2))**clog2_l(Gain_max))<<SCALING_FACTOR_SHIFT)/Gain_max;
 
 if  (VARIABLE_RATE) begin
     (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT [1:CIC_R];
@@ -82,22 +81,21 @@ if  (VARIABLE_RATE) begin
     initial begin
         // this LUT calculation in verilog is limited, it works for R=4095, N=6, M=1
         // if larger values are needed, do LUT calculation outside verilog, ie python
-        bit unsigned [127:0] k;
-        localparam bit unsigned [127:0] R_extended = CIC_R;
         reg unsigned [127:0] gain_diff;
         reg unsigned [31:0] pre_shift;
         reg unsigned [EXACT_SCALING_FACTOR_WIDTH-1:0] post_mult;
+        integer k;
         reg unsigned [clog2_l(CIC_R):0] small_k;
         for(k=1;k<=CIC_R;k=k+1) begin
             small_k = k[clog2_l(CIC_R):0];
-            gain_diff = (((R_extended<<(SCALING_FACTOR_SHIFT/CIC_N))/k)**CIC_N);
+            gain_diff = (((128'(CIC_R)<<(SCALING_FACTOR_SHIFT/CIC_N))/k)**CIC_N);
             pre_shift = flog2_l(gain_diff>>(SCALING_FACTOR_SHIFT)); 
             LUT[small_k] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
             if (EXACT_SCALING) begin
                 post_mult = (gain_diff >> pre_shift);
                 LUT2[small_k] = post_mult[EXACT_SCALING_FACTOR_WIDTH-1:0];
             end
-            $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", k, LUT[small_k], base2**pre_shift, gain_diff>>SCALING_FACTOR_SHIFT, LUT2[small_k]);
+            $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", k, LUT[small_k], 128'(2)**pre_shift, gain_diff>>SCALING_FACTOR_SHIFT, LUT2[small_k]);
         end
     end        
 end
@@ -246,10 +244,10 @@ reg     [CIC_N : 0]     comb_inp_str_d;
 generate
     
     for (j = 0; j < CIC_N; j = j + 1) begin : comb_stage
-        localparam B_m_j_m1             =    get_prune_bits(CIC_N + j);
-        localparam B_m_j                =    get_prune_bits(CIC_N + j + 1);
-        localparam idw_cur = B_max - B_m_j_m1;
-        localparam odw_cur = B_max - B_m_j;
+        localparam B_m_j_m1             = get_prune_bits(CIC_N + j);
+        localparam B_m_j                = get_prune_bits(CIC_N + j + 1);
+        localparam idw_cur              = B_max - B_m_j_m1;
+        localparam odw_cur              = B_max - B_m_j;
         wire signed [idw_cur - 1 : 0] comb_in;
         wire signed [idw_cur - 1 : 0] comb_inst_out;
         wire signed [odw_cur - 1 : 0] comb_out;
@@ -257,7 +255,7 @@ generate
         else            assign comb_in = comb_stage[j - 1].comb_out;
         assign comb_out = comb_inst_out[idw_cur - 1 -: odw_cur];  // throw away some LSBs
         
-        wire                          comb_in_str;
+        wire comb_in_str;
         if (j == 0)     assign comb_in_str = ds_out_samp_str;
         else            assign comb_in_str = comb_stage[j - 1].comb_dv;
         
@@ -283,13 +281,13 @@ generate
     end
 endgenerate
 /*********************************************************************************************/
-reg             signed [OUT_DW-1+SCALING_FACTOR_SHIFT:0]    comb_out_samp_data_reg;
-reg                                                         comb_out_samp_str_reg;
-reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0]     current_exact_scaling_factor_reg;
+reg signed      [OUT_DW-1+SCALING_FACTOR_SHIFT:0]    comb_out_samp_data_reg;
+reg                                                  comb_out_samp_str_reg;
+reg unsigned    [EXACT_SCALING_FACTOR_WIDTH-1:0]     current_exact_scaling_factor_reg;
 
 always @(posedge clk)
 begin
-    if      (~reset_n) begin
+    if (~reset_n) begin
         comb_out_samp_data_reg <= '0;        
         comb_out_samp_str_reg <= '0;
     end 
