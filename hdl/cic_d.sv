@@ -12,7 +12,9 @@ module cic_d
     /* verilator lint_off WIDTH */
     parameter [32*(CIC_N*2+2)-1:0] PRUNE_BITS = {(CIC_N*2+2){32'd0}},   // stage width can be given as a parameter to speed up synthesis
     parameter VARIABLE_RATE = 1,
-    parameter EXACT_SCALING = 1
+    parameter EXACT_SCALING = 1,
+    parameter SCALING_FACTOR_SHIFT = 5 * CIC_N,
+    parameter PROGRAMMABLE_SCALING = 0
 )
 /*********************************************************************************************/
 (
@@ -46,35 +48,45 @@ function integer get_prune_bits(input integer i);
     end
 endfunction
 
-localparam      SCALING_FACTOR_WIDTH = clog2_l(clog2_l((CIC_R * CIC_M) ** CIC_N)) + 1;
-localparam      SCALING_FACTOR_SHIFT = 5 * CIC_N;
-localparam      EXACT_SCALING_FACTOR_WIDTH = SCALING_FACTOR_WIDTH + SCALING_FACTOR_SHIFT + 1;
+localparam      SCALING_FACTOR_WIDTH = PROGRAMMABLE_SCALING ? RATE_DW - 3 : clog2_l(clog2_l((CIC_R * CIC_M) ** CIC_N)) + 1;
+localparam      EXACT_SCALING_FACTOR_WIDTH = PROGRAMMABLE_SCALING ? RATE_DW - 3 : SCALING_FACTOR_WIDTH + SCALING_FACTOR_SHIFT + 1;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]       current_scaling_factor = 0;
 reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0] current_exact_scaling_factor = (((128'(2))**clog2_l(Gain_max))<<SCALING_FACTOR_SHIFT)/Gain_max;
+wire downsampler_rate_valid;
 
-if  (VARIABLE_RATE) begin
-    (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT [1:CIC_R];
-    (* ram_style = "distributed" *) reg unsigned [EXACT_SCALING_FACTOR_WIDTH-1:0]  LUT2 [1:CIC_R];
-
-    reg unsigned       [SCALING_FACTOR_WIDTH-1:0]           scaling_factor_buf = 0;
-    reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0]     exact_scaling_factor_buf = 0;
+if (PROGRAMMABLE_SCALING) begin
+    reg unsigned       [RATE_DW-4:0]                        scaling_factor_buf = 0;
+    reg unsigned       [RATE_DW-4:0]                        exact_scaling_factor_buf = 0;
+    wire [2:0] config_addr;
+    wire [2:0] config_data;
+    assign config_addr = s_axis_rate_tdata[RATE_DW - 1: RATE_DW - 3];
+    assign config_data = s_axis_rate_tdata[RATE_DW - 4:0];
+    assign downsampler_rate_valid = (config_addr == 0) && s_axis_rate_tvalid;
     always_ff @(posedge clk) begin
         if (!reset_n) begin
             scaling_factor_buf <= 0;
             exact_scaling_factor_buf <= 0;
         end
         else if (s_axis_rate_tvalid) begin
-            scaling_factor_buf <= !reset_n ? 0 : LUT[s_axis_rate_tdata];
-            if (EXACT_SCALING)
-                exact_scaling_factor_buf <= !reset_n ? 0 : LUT2[s_axis_rate_tdata];
-            // $display("pre_shift = %d   rate = %d  lut-width = %d" , LUT[s_axis_rate_tdata], s_axis_rate_tdata,SCALING_FACTOR_WIDTH);
+            if (config_addr == 1)
+                scaling_factor_buf       <= !reset_n ? 0 : config_data;
+            else if (config_addr == 2)
+                exact_scaling_factor_buf <= !reset_n ? 0 : config_data;
         end
         // one pipeline stage
         current_scaling_factor <= !reset_n ? 0 : scaling_factor_buf;
-        if (EXACT_SCALING)
+        if (EXACT_SCALING) begin
             current_exact_scaling_factor <= !reset_n ? 0 : exact_scaling_factor_buf;
-    end
+        end
+    end    
+end
 
+// having verilog calculate the scaling factors is not recommended
+// this is here as a compatibility modus for the Xilinx CIC
+if  (!PROGRAMMABLE_SCALING && VARIABLE_RATE) begin
+    assign downsampler_rate_valid = s_axis_rate_tvalid;
+    (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT [1:CIC_R];
+    (* ram_style = "distributed" *) reg unsigned [EXACT_SCALING_FACTOR_WIDTH-1:0]  LUT2 [1:CIC_R];
     initial begin
         // this LUT calculation in verilog is limited, it works for R=4095, N=6, M=1
         // if larger values are needed, do LUT calculation outside verilog, ie python
@@ -95,7 +107,26 @@ if  (VARIABLE_RATE) begin
             end
             $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", r, LUT[small_r], 128'(2)**pre_shift, gain_diff>>SCALING_FACTOR_SHIFT, LUT2[small_r]);
         end
-    end        
+    end           
+
+    reg unsigned       [SCALING_FACTOR_WIDTH-1:0]           scaling_factor_buf = 0;
+    reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0]     exact_scaling_factor_buf = 0;
+    always_ff @(posedge clk) begin
+        if (!reset_n) begin
+            scaling_factor_buf <= 0;
+            exact_scaling_factor_buf <= 0;
+        end
+        else if (s_axis_rate_tvalid) begin
+            scaling_factor_buf <= !reset_n ? 0 : LUT[s_axis_rate_tdata];
+            if (EXACT_SCALING)
+                exact_scaling_factor_buf <= !reset_n ? 0 : LUT2[s_axis_rate_tdata];
+            // $display("pre_shift = %d   rate = %d  lut-width = %d" , LUT[s_axis_rate_tdata], s_axis_rate_tdata,SCALING_FACTOR_WIDTH);
+        end
+        // one pipeline stage
+        current_scaling_factor <= !reset_n ? 0 : scaling_factor_buf;
+        if (EXACT_SCALING)
+            current_exact_scaling_factor <= !reset_n ? 0 : exact_scaling_factor_buf;
+    end
 end
 
 
@@ -189,7 +220,7 @@ if (VARIABLE_RATE) begin
 
     downsampler_variable #(
             .DATA_WIDTH_INP (ds_dw),
-            .DATA_WIDTH_RATE (RATE_DW)
+            .DATA_WIDTH_RATE (RATE_DW - 2)
         )
         downsampler_variable_inst
         (
@@ -197,8 +228,8 @@ if (VARIABLE_RATE) begin
             .reset_n                (reset_n),
             .s_axis_in_tdata        (data_buf[PIPELINE_STAGES-1]),
             .s_axis_in_tvalid       (valid_buf[PIPELINE_STAGES-1]),
-            .s_axis_rate_tdata      (s_axis_rate_tdata),
-            .s_axis_rate_tvalid     (s_axis_rate_tvalid),
+            .s_axis_rate_tdata      (s_axis_rate_tdata[RATE_DW-3:0]),
+            .s_axis_rate_tvalid     (downsampler_rate_valid),
             .m_axis_out_tdata       (ds_out_samp_data),
             .m_axis_out_tvalid      (ds_out_samp_str)
         );
