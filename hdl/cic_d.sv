@@ -88,6 +88,8 @@ if  (VARIABLE_RATE) begin
             pre_shift = flog2_l(gain_diff >> (SCALING_FACTOR_SHIFT)); 
             LUT[small_r] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
             if (EXACT_SCALING) begin
+                // this calculation only makes the frequency response equal to the r = CIC_R case
+                // but it does not make it 1! The calculation to make it 1 is too much for verilog :/
                 post_mult = (gain_diff >> pre_shift);
                 LUT2[small_r] = post_mult[EXACT_SCALING_FACTOR_WIDTH-1:0];
             end
