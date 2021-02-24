@@ -84,9 +84,8 @@ if  (VARIABLE_RATE) begin
         reg unsigned [127:0] gain_diff;
         reg unsigned [31:0] pre_shift;
         reg unsigned [EXACT_SCALING_FACTOR_WIDTH-1:0] post_mult;
-        integer k;
         reg unsigned [clog2_l(CIC_R):0] small_k;
-        for(k=1;k<=CIC_R;k=k+1) begin
+        for(integer k=1;k<=CIC_R;k++) begin
             small_k = k[clog2_l(CIC_R):0];
             gain_diff = (((128'(CIC_R)<<(SCALING_FACTOR_SHIFT/CIC_N))/k)**CIC_N);
             pre_shift = flog2_l(gain_diff>>(SCALING_FACTOR_SHIFT)); 
@@ -135,7 +134,7 @@ generate
                     else
                         data_buf[0] <= int_in;
                     valid_buf[0] <= s_axis_in_tvalid;
-                    for (integer j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
+                    for (integer j = 0; j < (PIPELINE_STAGES-1); j++) begin 
                         data_buf[j+1] <= data_buf[j];
                         valid_buf[j+1] <= valid_buf[j];
                     end                 
@@ -199,7 +198,7 @@ if (VARIABLE_RATE) begin
         else begin
             data_buf[0] <= int_stage[CIC_N - 1].int_out;
             valid_buf[0] <= s_axis_in_tvalid;
-            for (integer j = 0; j < (PIPELINE_STAGES-1); j = j + 1) begin 
+            for (integer j = 0; j < (PIPELINE_STAGES-1); j++) begin 
                 data_buf[j+1] <= data_buf[j];
                 valid_buf[j+1] <= valid_buf[j];
             end                 
@@ -317,7 +316,7 @@ always @(posedge clk)
         else
             out_data_buf[0] <= comb_out_samp_data_reg;
         out_valid_buf[0] <= comb_out_samp_str_reg;
-        for (integer j = 0; j < (OUT_PIPELINE_STAGES-1); j = j + 1) begin 
+        for (integer j = 0; j < (OUT_PIPELINE_STAGES-1); j++) begin 
             out_data_buf[j+1] <= out_data_buf[j];
             out_valid_buf[j+1] <= out_valid_buf[j];
         end
