@@ -284,17 +284,18 @@ reg signed      [OUT_DW-1+SCALING_FACTOR_SHIFT:0]    comb_out_samp_data_reg;
 reg                                                  comb_out_samp_str_reg;
 reg unsigned    [EXACT_SCALING_FACTOR_WIDTH-1:0]     current_exact_scaling_factor_reg;
 
-always @(posedge clk)
-begin
-    if (~reset_n) begin
-        comb_out_samp_data_reg <= '0;        
-        comb_out_samp_str_reg <= '0;
-    end 
-    else begin
-        comb_out_samp_data_reg <= {{SCALING_FACTOR_SHIFT{comb_stage[CIC_N - 1].comb_out[dw_out - 1]}},{(comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW])}};    
-        current_exact_scaling_factor_reg <= current_exact_scaling_factor;
-        comb_out_samp_str_reg <= comb_chain_out_str;
-    end
+//always @(posedge clk)
+//begin
+always_ff @(posedge clk) begin
+  //  if (~reset_n) begin
+    //    comb_out_samp_data_reg <= '0;        
+      //  comb_out_samp_str_reg <= '0;
+    //end 
+    //else begin
+        comb_out_samp_data_reg <= !reset_n ? 0 : {{SCALING_FACTOR_SHIFT{comb_stage[CIC_N - 1].comb_out[dw_out - 1]}},{(comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW])}};    
+        current_exact_scaling_factor_reg <= !reset_n ? 0 : current_exact_scaling_factor;
+        comb_out_samp_str_reg <= !reset_n ? 0 : comb_chain_out_str;
+    //end
 end
 
 localparam OUT_PIPELINE_STAGES = 2;
