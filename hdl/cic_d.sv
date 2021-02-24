@@ -28,7 +28,7 @@ module cic_d
 /*********************************************************************************************/
 `include "cic_functions.vh"
 /*********************************************************************************************/
-localparam bit unsigned [127:0]     Gain_max = (CIC_R * CIC_M) ** CIC_N;
+localparam bit unsigned [127:0]     Gain_max = (128'(CIC_R) * CIC_M) ** CIC_N;
 localparam      B_max = clog2_l(Gain_max) + INP_DW;
 localparam      truncated_bits = B_max - OUT_DW;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N);
@@ -46,12 +46,11 @@ function integer get_prune_bits(input integer i);
     end
 endfunction
 
-
-localparam      SCALING_FACTOR_WIDTH = clog2_l(clog2_l(CIC_R)*CIC_N)+1;
-localparam      SCALING_FACTOR_SHIFT = 5*CIC_N;
-localparam      EXACT_SCALING_FACTOR_WIDTH = clog2_l(clog2_l(CIC_R)*CIC_N)+SCALING_FACTOR_SHIFT+1;
-reg unsigned       [SCALING_FACTOR_WIDTH-1:0]     current_scaling_factor = 0;
-reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0]     current_exact_scaling_factor = (((128'(2))**clog2_l(Gain_max))<<SCALING_FACTOR_SHIFT)/Gain_max;
+localparam      SCALING_FACTOR_WIDTH = clog2_l(clog2_l((CIC_R * CIC_M) ** CIC_N)) + 1;
+localparam      SCALING_FACTOR_SHIFT = 5 * CIC_N;
+localparam      EXACT_SCALING_FACTOR_WIDTH = SCALING_FACTOR_WIDTH + SCALING_FACTOR_SHIFT + 1;
+reg unsigned       [SCALING_FACTOR_WIDTH-1:0]       current_scaling_factor = 0;
+reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0] current_exact_scaling_factor = (((128'(2))**clog2_l(Gain_max))<<SCALING_FACTOR_SHIFT)/Gain_max;
 
 if  (VARIABLE_RATE) begin
     (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT [1:CIC_R];
@@ -81,18 +80,18 @@ if  (VARIABLE_RATE) begin
         // if larger values are needed, do LUT calculation outside verilog, ie python
         reg unsigned [127:0] gain_diff;
         reg unsigned [31:0] pre_shift;
-        reg unsigned [EXACT_SCALING_FACTOR_WIDTH-1:0] post_mult;
-        reg unsigned [clog2_l(CIC_R):0] small_k;
-        for(integer k=1;k<=CIC_R;k++) begin
-            small_k = k[clog2_l(CIC_R):0];
-            gain_diff = (((128'(CIC_R)<<(SCALING_FACTOR_SHIFT/CIC_N))/k)**CIC_N);
-            pre_shift = flog2_l(gain_diff>>(SCALING_FACTOR_SHIFT)); 
-            LUT[small_k] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
+        reg unsigned [127:0] post_mult;
+        reg unsigned [clog2_l(CIC_R):0] small_r;
+        for(integer r=1;r<=CIC_R;r++) begin
+            small_r = r[clog2_l(CIC_R):0];
+            gain_diff = (((127'(CIC_R) << (SCALING_FACTOR_SHIFT / CIC_N)) / r) ** CIC_N);
+            pre_shift = flog2_l(gain_diff >> (SCALING_FACTOR_SHIFT)); 
+            LUT[small_r] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
             if (EXACT_SCALING) begin
                 post_mult = (gain_diff >> pre_shift);
-                LUT2[small_k] = post_mult[EXACT_SCALING_FACTOR_WIDTH-1:0];
+                LUT2[small_r] = post_mult[EXACT_SCALING_FACTOR_WIDTH-1:0];
             end
-            $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", k, LUT[small_k], 128'(2)**pre_shift, gain_diff>>SCALING_FACTOR_SHIFT, LUT2[small_k]);
+            $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", r, LUT[small_r], 128'(2)**pre_shift, gain_diff>>SCALING_FACTOR_SHIFT, LUT2[small_r]);
         end
     end        
 end
