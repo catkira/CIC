@@ -284,18 +284,10 @@ reg signed      [OUT_DW-1+SCALING_FACTOR_SHIFT:0]    comb_out_samp_data_reg;
 reg                                                  comb_out_samp_str_reg;
 reg unsigned    [EXACT_SCALING_FACTOR_WIDTH-1:0]     current_exact_scaling_factor_reg;
 
-//always @(posedge clk)
-//begin
 always_ff @(posedge clk) begin
-  //  if (~reset_n) begin
-    //    comb_out_samp_data_reg <= '0;        
-      //  comb_out_samp_str_reg <= '0;
-    //end 
-    //else begin
-        comb_out_samp_data_reg <= !reset_n ? 0 : {{SCALING_FACTOR_SHIFT{comb_stage[CIC_N - 1].comb_out[dw_out - 1]}},{(comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW])}};    
-        current_exact_scaling_factor_reg <= !reset_n ? 0 : current_exact_scaling_factor;
-        comb_out_samp_str_reg <= !reset_n ? 0 : comb_chain_out_str;
-    //end
+    comb_out_samp_data_reg           <= !reset_n ? 0 : {{SCALING_FACTOR_SHIFT{comb_stage[CIC_N - 1].comb_out[dw_out - 1]}},{(comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW])}};    
+    current_exact_scaling_factor_reg <= !reset_n ? 0 : current_exact_scaling_factor;
+    comb_out_samp_str_reg            <= !reset_n ? 0 : comb_chain_out_str;
 end
 
 localparam OUT_PIPELINE_STAGES = 2;
@@ -304,24 +296,18 @@ reg         [OUT_PIPELINE_STAGES-1:0]               out_valid_buf;
 wire signed [OUT_DW-1+SCALING_FACTOR_SHIFT:0]       out_mult_result;
 assign out_mult_result = comb_out_samp_data_reg * current_exact_scaling_factor_reg;
 
-always @(posedge clk)
-    if      (~reset_n) begin
-        out_valid_buf <= {OUT_PIPELINE_STAGES{1'b0}};
-        foreach(out_data_buf[j])
-            out_data_buf[j] <= 0;
+always_ff @(posedge clk) begin
+    if (EXACT_SCALING)
+        out_data_buf[0] <= !reset_n ? 0 : {{SCALING_FACTOR_SHIFT{out_mult_result[OUT_DW-1+SCALING_FACTOR_SHIFT]}},{out_mult_result[OUT_DW-1+SCALING_FACTOR_SHIFT:SCALING_FACTOR_SHIFT]}};  
+        // out_data_buf[0] <= out_mult_result >>> SCALING_FACTOR_SHIFT;   // why is this not working???
+    else
+        out_data_buf[0] <= !reset_n ? 0 : comb_out_samp_data_reg;
+    out_valid_buf[0] <= !reset_n ? 0 : comb_out_samp_str_reg;
+    for (integer j = 0; j < (OUT_PIPELINE_STAGES-1); j++) begin 
+        out_data_buf[j+1] <= !reset_n ? 0 : out_data_buf[j];
+        out_valid_buf[j+1] <= !reset_n ? 0 : out_valid_buf[j];
     end
-    else begin                           
-        if (EXACT_SCALING)
-            out_data_buf[0] <= {{SCALING_FACTOR_SHIFT{out_mult_result[OUT_DW-1+SCALING_FACTOR_SHIFT]}},{out_mult_result[OUT_DW-1+SCALING_FACTOR_SHIFT:SCALING_FACTOR_SHIFT]}};  
-            // out_data_buf[0] <= out_mult_result >>> SCALING_FACTOR_SHIFT;   // why is this not working???
-        else
-            out_data_buf[0] <= comb_out_samp_data_reg;
-        out_valid_buf[0] <= comb_out_samp_str_reg;
-        for (integer j = 0; j < (OUT_PIPELINE_STAGES-1); j++) begin 
-            out_data_buf[j+1] <= out_data_buf[j];
-            out_valid_buf[j+1] <= out_valid_buf[j];
-        end
-    end
+end
 
 wire unsigned [OUT_DW-1+SCALING_FACTOR_SHIFT:0] out_pipeline_output;
 assign out_pipeline_output   = out_data_buf[OUT_PIPELINE_STAGES-1];
