@@ -100,7 +100,7 @@ end
 
 genvar  i;
 generate
-    for (i = 0; i < CIC_N; i = i + 1) begin : int_stage
+    for (i = 0; i < CIC_N; i++) begin : int_stage
         localparam B_jm1 = get_prune_bits(i);   ///< the number of bits to prune in previous stage
         localparam B_j   = get_prune_bits(i+1); ///< the number of bits to prune in current stage
         localparam idw_cur = B_max - B_jm1;         ///< data width on the input
@@ -180,11 +180,12 @@ if (VARIABLE_RATE) begin
     reg  [PIPELINE_STAGES-1:0]        valid_buf;
     
     always_ff @(posedge clk) begin
-        data_buf[0] <= !reset_n ? 0 : int_stage[CIC_N - 1].int_out;
-        valid_buf[0] <= !reset_n ? 0 : s_axis_in_tvalid;
-        for (integer j = 0; j < (PIPELINE_STAGES-1); j++) begin 
-            data_buf[j+1] <= !reset_n ? 0 : data_buf[j];
-            valid_buf[j+1] <= !reset_n ? 0 : valid_buf[j];
+        //data_buf[0] <= !reset_n ? 0 : int_stage[CIC_N - 1].int_out;
+        //valid_buf[0] <= !reset_n ? 0 : s_axis_in_tvalid;
+        //for (integer j = 0; j < (PIPELINE_STAGES-1); j++) begin 
+        foreach(data_buf[j]) begin
+            data_buf[j] <= !reset_n ? 0 : (j == 0 ? int_stage[CIC_N - 1].int_out : data_buf[j-1]);
+            valid_buf[j] <= !reset_n ? 0 : (j == 0 ? s_axis_in_tvalid : valid_buf[j-1]);
         end                 
     end       
 
