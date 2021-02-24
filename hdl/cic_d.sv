@@ -59,23 +59,21 @@ if  (VARIABLE_RATE) begin
 
     reg unsigned       [SCALING_FACTOR_WIDTH-1:0]           scaling_factor_buf = 0;
     reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0]     exact_scaling_factor_buf = 0;
-    always @(posedge clk)
-    begin
+    always_ff @(posedge clk) begin
         if (!reset_n) begin
-            current_scaling_factor <= 0;
             scaling_factor_buf <= 0;
-            current_exact_scaling_factor <= 0;
             exact_scaling_factor_buf <= 0;
         end
         else if (s_axis_rate_tvalid) begin
-            scaling_factor_buf <= LUT[s_axis_rate_tdata];
+            scaling_factor_buf <= !reset_n ? 0 : LUT[s_axis_rate_tdata];
             if (EXACT_SCALING)
-                exact_scaling_factor_buf <= LUT2[s_axis_rate_tdata];
+                exact_scaling_factor_buf <= !reset_n ? 0 : LUT2[s_axis_rate_tdata];
             // $display("pre_shift = %d   rate = %d  lut-width = %d" , LUT[s_axis_rate_tdata], s_axis_rate_tdata,SCALING_FACTOR_WIDTH);
         end
-        current_scaling_factor <= scaling_factor_buf;
+        // one pipeline stage
+        current_scaling_factor <= !reset_n ? 0 : scaling_factor_buf;
         if (EXACT_SCALING)
-            current_exact_scaling_factor <= exact_scaling_factor_buf;
+            current_exact_scaling_factor <= !reset_n ? 0 : exact_scaling_factor_buf;
     end
 
     initial begin
@@ -114,31 +112,24 @@ generate
                 assign int_in = {{(idw_cur-INP_DW){s_axis_in_tdata[INP_DW-1]}},s_axis_in_tdata};
             else
                 assign int_in = s_axis_in_tdata[idw_cur-1:0];
-        else            assign int_in = int_stage[i - 1].int_out;
+        else
+            assign int_in = int_stage[i - 1].int_out;
         wire signed [odw_cur - 1 : 0] int_out;
         
         if (VARIABLE_RATE) begin
             localparam PIPELINE_STAGES = 3;
             reg [idw_cur-1:0] data_buf[0:PIPELINE_STAGES-1];
             reg  [PIPELINE_STAGES-1:0]        valid_buf;
-            always @(posedge clk)
-            begin
-                if(!reset_n) begin
-                    valid_buf <= {PIPELINE_STAGES{1'b0}};
-                    foreach(data_buf[j])
-                        data_buf[j] <= 0;
-                end
-                else begin
-                    if(i == 0)
-                        data_buf[0] <= (int_in << current_scaling_factor);
-                    else
-                        data_buf[0] <= int_in;
-                    valid_buf[0] <= s_axis_in_tvalid;
-                    for (integer j = 0; j < (PIPELINE_STAGES-1); j++) begin 
-                        data_buf[j+1] <= data_buf[j];
-                        valid_buf[j+1] <= valid_buf[j];
-                    end                 
-                end
+            always_ff @(posedge clk) begin
+                if(i == 0)
+                    data_buf[0] <= !reset_n ? 0 : (int_in << current_scaling_factor);
+                else
+                    data_buf[0] <= !reset_n ? 0 : int_in;
+                valid_buf[0] <= !reset_n ? 0 : s_axis_in_tvalid;
+                for (integer j = 0; j < (PIPELINE_STAGES-1); j++) begin 
+                    data_buf[j+1] <= !reset_n ? 0 : data_buf[j];
+                    valid_buf[j+1] <= !reset_n ? 0 : valid_buf[j];
+                end                 
             end   
             integrator #(
                 idw_cur,
@@ -188,21 +179,13 @@ if (VARIABLE_RATE) begin
     reg [ds_dw-1:0] data_buf[0:PIPELINE_STAGES-1];
     reg  [PIPELINE_STAGES-1:0]        valid_buf;
     
-    always @(posedge clk)
-    begin
-        if(!reset_n) begin
-            valid_buf <= {PIPELINE_STAGES{1'b0}};
-            foreach(data_buf[j])
-                data_buf[j] <= 0;
-        end
-        else begin
-            data_buf[0] <= int_stage[CIC_N - 1].int_out;
-            valid_buf[0] <= s_axis_in_tvalid;
-            for (integer j = 0; j < (PIPELINE_STAGES-1); j++) begin 
-                data_buf[j+1] <= data_buf[j];
-                valid_buf[j+1] <= valid_buf[j];
-            end                 
-        end
+    always_ff @(posedge clk) begin
+        data_buf[0] <= !reset_n ? 0 : int_stage[CIC_N - 1].int_out;
+        valid_buf[0] <= !reset_n ? 0 : s_axis_in_tvalid;
+        for (integer j = 0; j < (PIPELINE_STAGES-1); j++) begin 
+            data_buf[j+1] <= !reset_n ? 0 : data_buf[j];
+            valid_buf[j+1] <= !reset_n ? 0 : valid_buf[j];
+        end                 
     end       
 
     downsampler_variable #(
