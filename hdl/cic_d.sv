@@ -180,9 +180,6 @@ if (VARIABLE_RATE) begin
     reg  [PIPELINE_STAGES-1:0]        valid_buf;
     
     always_ff @(posedge clk) begin
-        //data_buf[0] <= !reset_n ? 0 : int_stage[CIC_N - 1].int_out;
-        //valid_buf[0] <= !reset_n ? 0 : s_axis_in_tvalid;
-        //for (integer j = 0; j < (PIPELINE_STAGES-1); j++) begin 
         foreach(data_buf[j]) begin
             data_buf[j] <= !reset_n ? 0 : (j == 0 ? int_stage[CIC_N - 1].int_out : data_buf[j-1]);
             valid_buf[j] <= !reset_n ? 0 : (j == 0 ? s_axis_in_tvalid : valid_buf[j-1]);
@@ -226,7 +223,7 @@ wire                    comb_chain_out_str;
 reg     [CIC_N : 0]     comb_inp_str_d;
 generate
     
-    for (j = 0; j < CIC_N; j = j + 1) begin : comb_stage
+    for (j = 0; j < CIC_N; j++) begin : comb_stage
         localparam B_m_j_m1             = get_prune_bits(CIC_N + j);
         localparam B_m_j                = get_prune_bits(CIC_N + j + 1);
         localparam idw_cur              = B_max - B_m_j_m1;
