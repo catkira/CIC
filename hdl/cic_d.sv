@@ -6,15 +6,15 @@ module cic_d
     parameter INP_DW = 32,          // input data width
     parameter OUT_DW = 32,          // output data width
     parameter RATE_DW = 32,          // rate data width
-    parameter CIC_R = 10,           // decimation ratio, if VARIABLE_RATE = 1, R has to be set to the maximum decimation ratio
+    parameter CIC_R = 10,           // decimation ratio, if VAR_RATE = 1, R has to be set to the maximum decimation ratio
     parameter CIC_N = 7,            // number of stages
     parameter CIC_M = 1,            // delay in comb
     /* verilator lint_off WIDTH */
     parameter [32*(CIC_N*2+2)-1:0] PRUNE_BITS = {(CIC_N*2+2){32'd0}},   // stage width can be given as a parameter to speed up synthesis
-    parameter VARIABLE_RATE = 1,
+    parameter VAR_RATE = 1,
     parameter EXACT_SCALING = 1,
-    parameter SCALING_FACTOR_SHIFT = 5 * CIC_N,
-    parameter PROGRAMMABLE_SCALING = 0
+    parameter NUM_SHIFT = 5 * CIC_N,
+    parameter PRG_SCALING = 0
 )
 /*********************************************************************************************/
 (
@@ -48,19 +48,19 @@ function integer get_prune_bits(input integer i);
     end
 endfunction
 
-localparam      SCALING_FACTOR_WIDTH = PROGRAMMABLE_SCALING ? RATE_DW - 3 : clog2_l(clog2_l((CIC_R * CIC_M) ** CIC_N)) + 1;
-localparam      EXACT_SCALING_FACTOR_WIDTH = PROGRAMMABLE_SCALING ? RATE_DW - 3 : SCALING_FACTOR_WIDTH + SCALING_FACTOR_SHIFT + 1;
+localparam      SCALING_FACTOR_WIDTH = PRG_SCALING ? RATE_DW - 3 : clog2_l(clog2_l((CIC_R * CIC_M) ** CIC_N)) + 1;
+localparam      EXACT_SCALING_FACTOR_WIDTH = PRG_SCALING ? RATE_DW - 3 : SCALING_FACTOR_WIDTH + NUM_SHIFT + 1;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]       current_scaling_factor = 0;
-reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0] current_exact_scaling_factor = (((128'(2))**clog2_l(Gain_max))<<SCALING_FACTOR_SHIFT)/Gain_max;
+reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0] current_exact_scaling_factor = (((128'(2))**clog2_l(Gain_max))<<NUM_SHIFT)/Gain_max;
 wire downsampler_rate_valid;
+wire [RATE_DW - 1 - 2:0] config_data;
+assign config_data = s_axis_rate_tdata[RATE_DW - 3:0];
 
-if (PROGRAMMABLE_SCALING) begin
+if (PRG_SCALING) begin
     reg unsigned       [RATE_DW-4:0]                        scaling_factor_buf = 0;
     reg unsigned       [RATE_DW-4:0]                        exact_scaling_factor_buf = 0;
-    wire [2:0] config_addr;
-    wire [2:0] config_data;
-    assign config_addr = s_axis_rate_tdata[RATE_DW - 1: RATE_DW - 3];
-    assign config_data = s_axis_rate_tdata[RATE_DW - 4:0];
+    wire [1:0] config_addr;
+    assign config_addr = s_axis_rate_tdata[RATE_DW - 1: RATE_DW - 2];
     assign downsampler_rate_valid = (config_addr == 0) && s_axis_rate_tvalid;
     always_ff @(posedge clk) begin
         if (!reset_n) begin
@@ -68,10 +68,15 @@ if (PROGRAMMABLE_SCALING) begin
             exact_scaling_factor_buf <= 0;
         end
         else if (s_axis_rate_tvalid) begin
-            if (config_addr == 1)
+            // $display("config_addr = %d", config_addr);
+            if (config_addr == 1) begin
                 scaling_factor_buf       <= !reset_n ? 0 : config_data;
-            else if (config_addr == 2)
+                $display("shift_number = %d", config_data);
+            end
+            else if (config_addr == 2) begin
                 exact_scaling_factor_buf <= !reset_n ? 0 : config_data;
+                $display("mult_number = %d", config_data);
+            end
         end
         // one pipeline stage
         current_scaling_factor <= !reset_n ? 0 : scaling_factor_buf;
@@ -83,7 +88,7 @@ end
 
 // having verilog calculate the scaling factors is not recommended
 // this is here as a compatibility modus for the Xilinx CIC
-if  (!PROGRAMMABLE_SCALING && VARIABLE_RATE) begin
+if  (!PRG_SCALING && VAR_RATE) begin
     assign downsampler_rate_valid = s_axis_rate_tvalid;
     (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT [1:CIC_R];
     (* ram_style = "distributed" *) reg unsigned [EXACT_SCALING_FACTOR_WIDTH-1:0]  LUT2 [1:CIC_R];
@@ -96,8 +101,8 @@ if  (!PROGRAMMABLE_SCALING && VARIABLE_RATE) begin
         reg unsigned [clog2_l(CIC_R):0] small_r;
         for(integer r=1;r<=CIC_R;r++) begin
             small_r = r[clog2_l(CIC_R):0];
-            gain_diff = (((127'(CIC_R) << (SCALING_FACTOR_SHIFT / CIC_N)) / r) ** CIC_N);
-            pre_shift = flog2_l(gain_diff >> (SCALING_FACTOR_SHIFT)); 
+            gain_diff = (((127'(CIC_R) << (NUM_SHIFT / CIC_N)) / r) ** CIC_N);
+            pre_shift = flog2_l(gain_diff >> (NUM_SHIFT)); 
             LUT[small_r] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
             if (EXACT_SCALING) begin
                 // this calculation only makes the frequency response equal to the r = CIC_R case
@@ -105,7 +110,7 @@ if  (!PROGRAMMABLE_SCALING && VARIABLE_RATE) begin
                 post_mult = (gain_diff >> pre_shift);
                 LUT2[small_r] = post_mult[EXACT_SCALING_FACTOR_WIDTH-1:0];
             end
-            $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", r, LUT[small_r], 128'(2)**pre_shift, gain_diff>>SCALING_FACTOR_SHIFT, LUT2[small_r]);
+            $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", r, LUT[small_r], 128'(2)**pre_shift, gain_diff>>NUM_SHIFT, LUT2[small_r]);
         end
     end           
 
@@ -148,7 +153,7 @@ generate
             assign int_in = int_stage[i - 1].int_out;
         wire signed [odw_cur - 1 : 0] int_out;
         
-        if (VARIABLE_RATE) begin
+        if (VAR_RATE) begin
             localparam PIPELINE_STAGES = 3;
             reg [idw_cur-1:0] data_buf[0:PIPELINE_STAGES-1];
             reg  [PIPELINE_STAGES-1:0]        valid_buf;
@@ -205,7 +210,7 @@ initial begin
         //$display("i downsamp dw %d , int_stage[%2d].dw_out = %2d", ds_dw, CIC_N - 1, int_stage[CIC_N - 1].odw_cur);
         $display("i downsamp dw %d", ds_dw);
 end
-if (VARIABLE_RATE) begin
+if (VAR_RATE) begin
 
     localparam PIPELINE_STAGES = 3;
     reg [ds_dw-1:0] data_buf[0:PIPELINE_STAGES-1];
@@ -228,7 +233,7 @@ if (VARIABLE_RATE) begin
             .reset_n                (reset_n),
             .s_axis_in_tdata        (data_buf[PIPELINE_STAGES-1]),
             .s_axis_in_tvalid       (valid_buf[PIPELINE_STAGES-1]),
-            .s_axis_rate_tdata      (s_axis_rate_tdata[RATE_DW-3:0]),
+            .s_axis_rate_tdata      (config_data),
             .s_axis_rate_tvalid     (downsampler_rate_valid),
             .m_axis_out_tdata       (ds_out_samp_data),
             .m_axis_out_tvalid      (ds_out_samp_str)
@@ -293,25 +298,25 @@ generate
     end
 endgenerate
 /*********************************************************************************************/
-reg signed      [OUT_DW-1+SCALING_FACTOR_SHIFT:0]    comb_out_samp_data_reg;
+reg signed      [OUT_DW-1+NUM_SHIFT:0]    comb_out_samp_data_reg;
 reg                                                  comb_out_samp_str_reg;
 reg unsigned    [EXACT_SCALING_FACTOR_WIDTH-1:0]     current_exact_scaling_factor_reg;
 
 always_ff @(posedge clk) begin
-    comb_out_samp_data_reg           <= !reset_n ? 0 : {{SCALING_FACTOR_SHIFT{comb_stage[CIC_N - 1].comb_out[dw_out - 1]}},{(comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW])}};    
+    comb_out_samp_data_reg           <= !reset_n ? 0 : {{NUM_SHIFT{comb_stage[CIC_N - 1].comb_out[dw_out - 1]}},{(comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW])}};    
     current_exact_scaling_factor_reg <= !reset_n ? 0 : current_exact_scaling_factor;
     comb_out_samp_str_reg            <= !reset_n ? 0 : comb_chain_out_str;
 end
 
 localparam OUT_PIPELINE_STAGES = 2;
-reg signed  [OUT_DW-1+SCALING_FACTOR_SHIFT:0]       out_data_buf[0:OUT_PIPELINE_STAGES-1];
+reg signed  [OUT_DW-1+NUM_SHIFT:0]       out_data_buf[0:OUT_PIPELINE_STAGES-1];
 reg         [OUT_PIPELINE_STAGES-1:0]               out_valid_buf;
-wire signed [OUT_DW-1+SCALING_FACTOR_SHIFT:0]       out_mult_result;
+wire signed [OUT_DW-1+NUM_SHIFT:0]       out_mult_result;
 assign out_mult_result = comb_out_samp_data_reg * current_exact_scaling_factor_reg;
 
 always_ff @(posedge clk) begin
     if (EXACT_SCALING)
-        out_data_buf[0] <= !reset_n ? 0 : {{SCALING_FACTOR_SHIFT{out_mult_result[OUT_DW-1+SCALING_FACTOR_SHIFT]}},{out_mult_result[OUT_DW-1+SCALING_FACTOR_SHIFT:SCALING_FACTOR_SHIFT]}};  
+        out_data_buf[0] <= !reset_n ? 0 : {{NUM_SHIFT{out_mult_result[OUT_DW-1+NUM_SHIFT]}},{out_mult_result[OUT_DW-1+NUM_SHIFT:NUM_SHIFT]}};  
         // out_data_buf[0] <= out_mult_result >>> SCALING_FACTOR_SHIFT;   // why is this not working???
     else
         out_data_buf[0] <= !reset_n ? 0 : comb_out_samp_data_reg;
@@ -322,7 +327,7 @@ always_ff @(posedge clk) begin
     end
 end
 
-wire unsigned [OUT_DW-1+SCALING_FACTOR_SHIFT:0] out_pipeline_output;
+wire unsigned [OUT_DW-1+NUM_SHIFT:0] out_pipeline_output;
 assign out_pipeline_output   = out_data_buf[OUT_PIPELINE_STAGES-1];
 assign m_axis_out_tdata      = out_pipeline_output[OUT_DW-1:0];
 assign m_axis_out_tvalid     = out_valid_buf[OUT_PIPELINE_STAGES-1];
