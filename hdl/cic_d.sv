@@ -115,7 +115,7 @@ if  (!PRG_SCALING && VAR_RATE) begin
                 post_mult = (gain_diff >> pre_shift);
                 LUT2[small_r] = post_mult[EXACT_SCALING_FACTOR_WIDTH-1:0];
             end
-            $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", r, LUT[small_r], 128'(2)**pre_shift, gain_diff>>NUM_SHIFT, LUT2[small_r]);
+            $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", r, pre_shift[SCALING_FACTOR_WIDTH-1:0], 128'(2)**pre_shift, gain_diff>>NUM_SHIFT, post_mult[EXACT_SCALING_FACTOR_WIDTH-1:0]);
         end
     end           
 
@@ -329,9 +329,9 @@ if (EXACT_SCALING) begin
         end
     end
 end
-wire signed [dw_out-1+NUM_SHIFT:0] out_mult_result;
+wire signed [dw_out-1+EXACT_SCALING_FACTOR_WIDTH:0] out_mult_result;
 if (EXACT_SCALING)
-    // this mult operation is done in OUT_DW+NUM_SHIFT bit, context-determined expression 
+    // this mult operation is done in dw_out+EXACT_SCALING_FACTOR_WIDTH bit, context-determined expression 
     // its important that both operands are signed because of this rule
     // "If any operand is unsigned, the result is unsigned, regardless of the operator"
     assign out_mult_result = comb_out_samp_data_reg[MULT_PIPELINE_STAGES-1] * current_exact_scaling_factor_reg[MULT_PIPELINE_STAGES-1];
