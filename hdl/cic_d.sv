@@ -35,6 +35,10 @@ localparam      B_max = clog2_l(Gain_max) + INP_DW;
 localparam      truncated_bits = B_max - OUT_DW;
 localparam      dw_out = B_max - get_prune_bits(2*CIC_N);
 /*********************************************************************************************/
+initial begin
+    $display("Gain_max = %d", Gain_max);
+    $display("B_max = %d", B_max);
+end
 
 function integer get_prune_bits(input integer i);
     if (PRUNE_BITS[32*(CIC_N*2+2)-1:0] == 0) begin
@@ -214,10 +218,10 @@ end
 if (VAR_RATE) begin
 
     localparam PIPELINE_STAGES = 3;
-    reg  [ds_dw-1:0]                  data_buf[0:PIPELINE_STAGES-1];
-    reg  [PIPELINE_STAGES-1:0]        valid_buf;
-    reg  [PIPELINE_STAGES-1:0]        rate_valid_buf;
-    reg  [CONFIG_DW - 1:0]            rate_data_buf [PIPELINE_STAGES-1:0];
+    reg  signed [ds_dw-1:0]                  data_buf[0:PIPELINE_STAGES-1];
+    reg         [PIPELINE_STAGES-1:0]        valid_buf;
+    reg         [PIPELINE_STAGES-1:0]        rate_valid_buf;
+    reg         [CONFIG_DW - 1:0]            rate_data_buf [PIPELINE_STAGES-1:0];
     
     always_ff @(posedge clk) begin
         foreach(data_buf[j]) begin
@@ -328,6 +332,8 @@ end
 wire signed [dw_out-1+NUM_SHIFT:0] out_mult_result;
 if (EXACT_SCALING)
     // this mult operation is done in OUT_DW+NUM_SHIFT bit, context-determined expression 
+    // its important that both operands are signed because of this rule
+    // "If any operand is unsigned, the result is unsigned, regardless of the operator"
     assign out_mult_result = comb_out_samp_data_reg[MULT_PIPELINE_STAGES-1] * current_exact_scaling_factor_reg[MULT_PIPELINE_STAGES-1];
 
 // output pipeline
@@ -338,7 +344,7 @@ always_ff @(posedge clk) begin
     foreach(out_data_buf[j]) begin
         if (j==0) begin
             if (EXACT_SCALING) begin
-                out_data_buf[0]  <= !reset_n ? 0 : out_mult_result[OUT_DW - 1 + NUM_SHIFT + (dw_out - OUT_DW) : NUM_SHIFT  + (dw_out - OUT_DW)];  
+                out_data_buf[0]  <= !reset_n ? 0 : out_mult_result[dw_out - 1 + NUM_SHIFT : NUM_SHIFT  + (dw_out - OUT_DW)];  
                 out_valid_buf[0] <= !reset_n ? 0 : comb_out_samp_str_reg[MULT_PIPELINE_STAGES-1];         
             end   
             else begin

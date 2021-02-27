@@ -164,7 +164,7 @@ async def variable_rate_test(dut):
         await tb.cycle_reset()
         await tb.set_rate(rate)
 
-        num_items = 10
+        num_items = 50
         output = []
         output_model = []
         gen = cocotb.fork(tb.generate_input())
@@ -179,14 +179,14 @@ async def variable_rate_test(dut):
             await RisingEdge(dut.clk)
             if(tb.model.data_valid()):
                 output_model.append(tb.model.get_data())
-                #print(f"model:\t[{len(output_model)}]\t {int(output_model[-1])} \t {output_model[-1]/max_out_value}")
+                print(f"model:\t[{len(output_model)}]\t {int(output_model[-1])} \t {output_model[-1]/max_out_value}")
 
             if dut.m_axis_out_tvalid == 1:
                 a=dut.m_axis_out_tdata.value.integer
                 if (a & (1 << (tb.OUT_DW - 1))) != 0:
                     a = a - (1 << tb.OUT_DW)
                 output.append(a)
-                #print(f"hdl: \t[{len(output)}]\t {int(a)} \t {a/max_out_value} ")
+                print(f"hdl: \t[{len(output)}]\t {int(a)} \t {a/max_out_value} ")
             #print(f"{int(tb.model.data_valid())} {dut.m_axis_out_tvalid}")
             count += 1
             if count > max_count:
@@ -198,6 +198,7 @@ async def variable_rate_test(dut):
                 assert np.abs(output[i] - output_model[i])/max_out_value <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"
             else:
                 assert np.abs(output[i] - output_model[i]) <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"
+    assert False
                 
 @cocotb.test()
 async def programmable_scaling_test(dut):
@@ -265,68 +266,68 @@ def calculate_prune_bits(R, N, M, INP_DW, OUT_DW):
         ret += int(B_j[i])<<(32*(i))
     return ret
 
-@pytest.mark.parametrize("R", [100, 10])
-@pytest.mark.parametrize("N", [6, 3])
-@pytest.mark.parametrize("M", [1, 3])
-@pytest.mark.parametrize("INP_DW", [16])
-@pytest.mark.parametrize("OUT_DW", [14, 16])
-@pytest.mark.parametrize("RATE_DW", [16])
-@pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [0, 1])
-@pytest.mark.parametrize("VAR_RATE", [0])
-@pytest.mark.parametrize("EXACT_SCALING", [0, 1])
-def test_cic_d(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VAR_RATE, EXACT_SCALING, PRECALCULATE_PRUNE_BITS):
-    dut = "cic_d"
-    module = os.path.splitext(os.path.basename(__file__))[0]
-    toplevel = dut
+# @pytest.mark.parametrize("R", [100, 10])
+# @pytest.mark.parametrize("N", [6, 3])
+# @pytest.mark.parametrize("M", [1, 3])
+# @pytest.mark.parametrize("INP_DW", [16])
+# @pytest.mark.parametrize("OUT_DW", [14, 16])
+# @pytest.mark.parametrize("RATE_DW", [16])
+# @pytest.mark.parametrize("PRECALCULATE_PRUNE_BITS", [0, 1])
+# @pytest.mark.parametrize("VAR_RATE", [0])
+# @pytest.mark.parametrize("EXACT_SCALING", [0, 1])
+# def test_cic_d(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VAR_RATE, EXACT_SCALING, PRECALCULATE_PRUNE_BITS):
+    # dut = "cic_d"
+    # module = os.path.splitext(os.path.basename(__file__))[0]
+    # toplevel = dut
 
-    verilog_sources = [
-        os.path.join(rtl_dir, f"{dut}.sv"),
-        os.path.join(rtl_dir, "comb.sv"),
-        os.path.join(rtl_dir, "integrator.sv"),
-        os.path.join(rtl_dir, "downsampler.sv"),
-        os.path.join(rtl_dir, "downsampler_variable.sv"),
-    ]
-    includes = [
-        os.path.join(rtl_dir, ""),
-        os.path.join(rtl_dir, "cic_functions.vh"),
-    ]    
+    # verilog_sources = [
+        # os.path.join(rtl_dir, f"{dut}.sv"),
+        # os.path.join(rtl_dir, "comb.sv"),
+        # os.path.join(rtl_dir, "integrator.sv"),
+        # os.path.join(rtl_dir, "downsampler.sv"),
+        # os.path.join(rtl_dir, "downsampler_variable.sv"),
+    # ]
+    # includes = [
+        # os.path.join(rtl_dir, ""),
+        # os.path.join(rtl_dir, "cic_functions.vh"),
+    # ]    
 
-    parameters = {}
+    # parameters = {}
 
-    parameters['CIC_R'] = R
-    parameters['CIC_M'] = M
-    parameters['CIC_N'] = N
-    parameters['INP_DW'] = INP_DW
-    parameters['OUT_DW'] = OUT_DW
-    parameters['RATE_DW'] = RATE_DW
-    parameters['VAR_RATE'] = VAR_RATE
-    parameters['EXACT_SCALING'] = EXACT_SCALING    
-    if PRECALCULATE_PRUNE_BITS:
-        parameters['PRUNE_BITS'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
+    # parameters['CIC_R'] = R
+    # parameters['CIC_M'] = M
+    # parameters['CIC_N'] = N
+    # parameters['INP_DW'] = INP_DW
+    # parameters['OUT_DW'] = OUT_DW
+    # parameters['RATE_DW'] = RATE_DW
+    # parameters['VAR_RATE'] = VAR_RATE
+    # parameters['EXACT_SCALING'] = EXACT_SCALING    
+    # if PRECALCULATE_PRUNE_BITS:
+        # parameters['PRUNE_BITS'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
 
-    extra_env = {f'PARAM_{k}': str(v) for k, v in parameters.items()}
-    sim_build="sim_build/" + "_".join(("{}={}".format(*i) for i in parameters.items()))
-    cocotb_test.simulator.run(
-        python_search=[tests_dir],
-        verilog_sources=verilog_sources,
-        includes=includes,
-        toplevel=toplevel,
-        module=module,
-        parameters=parameters,
-        sim_build=sim_build,
-        extra_env=extra_env,
-        testcase="simple_test",
-    )
+    # extra_env = {f'PARAM_{k}': str(v) for k, v in parameters.items()}
+    # sim_build="sim_build/" + "_".join(("{}={}".format(*i) for i in parameters.items()))
+    # cocotb_test.simulator.run(
+        # python_search=[tests_dir],
+        # verilog_sources=verilog_sources,
+        # includes=includes,
+        # toplevel=toplevel,
+        # module=module,
+        # parameters=parameters,
+        # sim_build=sim_build,
+        # extra_env=extra_env,
+        # testcase="simple_test",
+    # )
     
 @pytest.mark.parametrize("R", [4095])    # max rate
-@pytest.mark.parametrize("N", [3, 6])
+@pytest.mark.parametrize("N", [6, 3])
 @pytest.mark.parametrize("M", [1, 2])
-@pytest.mark.parametrize("INP_DW", [16])
-@pytest.mark.parametrize("OUT_DW", [14, 16])
+@pytest.mark.parametrize("INP_DW", [32])
+@pytest.mark.parametrize("OUT_DW", [32, 14])
 @pytest.mark.parametrize("RATE_DW", [16])
 @pytest.mark.parametrize("CALC_PRUNING", [1])
 @pytest.mark.parametrize("VAR_RATE", [1])
-@pytest.mark.parametrize("EXACT_SCALING", [0, 1])
+@pytest.mark.parametrize("EXACT_SCALING", [1, 0])
 def test_cic_d_variable_rate(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VAR_RATE, EXACT_SCALING, CALC_PRUNING):
     dut = "cic_d"
     module = os.path.splitext(os.path.basename(__file__))[0]
