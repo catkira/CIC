@@ -48,17 +48,18 @@ function integer get_prune_bits(input integer i);
     end
 endfunction
 
-localparam      SCALING_FACTOR_WIDTH = PRG_SCALING ? RATE_DW - 3 : clog2_l(clog2_l((CIC_R * CIC_M) ** CIC_N)) + 1;
-localparam      EXACT_SCALING_FACTOR_WIDTH = PRG_SCALING ? RATE_DW - 3 : SCALING_FACTOR_WIDTH + NUM_SHIFT + 1;
+localparam      SCALING_FACTOR_WIDTH = clog2_l(clog2_l((CIC_R * CIC_M) ** CIC_N)) + 1;
+localparam      EXACT_SCALING_FACTOR_WIDTH = PRG_SCALING ? RATE_DW - 2 : SCALING_FACTOR_WIDTH + NUM_SHIFT + 1;
+localparam      CONFIG_DW = PRG_SCALING ? RATE_DW - 2 : RATE_DW;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]       current_scaling_factor = 0;
 reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0] current_exact_scaling_factor = (((128'(2))**clog2_l(Gain_max))<<NUM_SHIFT)/Gain_max;
 wire downsampler_rate_valid;
-wire [RATE_DW - 1 - 2:0] config_data;
+wire [CONFIG_DW - 1:0] config_data;
 assign config_data = s_axis_rate_tdata[RATE_DW - 3:0];
 
 if (PRG_SCALING) begin
-    reg unsigned       [RATE_DW-4:0]                        scaling_factor_buf = 0;
-    reg unsigned       [RATE_DW-4:0]                        exact_scaling_factor_buf = 0;
+    reg unsigned       [CONFIG_DW-1:0]                        scaling_factor_buf = 0;
+    reg unsigned       [CONFIG_DW-1:0]                        exact_scaling_factor_buf = 0;
     wire [1:0] config_addr;
     assign config_addr = s_axis_rate_tdata[RATE_DW - 1: RATE_DW - 2];
     assign downsampler_rate_valid = (config_addr == 0) && s_axis_rate_tvalid;
@@ -90,8 +91,8 @@ end
 // this is here as a compatibility modus for the Xilinx CIC
 if  (!PRG_SCALING && VAR_RATE) begin
     assign downsampler_rate_valid = s_axis_rate_tvalid;
-    (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH-1:0] LUT [1:CIC_R];
-    (* ram_style = "distributed" *) reg unsigned [EXACT_SCALING_FACTOR_WIDTH-1:0]  LUT2 [1:CIC_R];
+    (* ram_style = "distributed" *) reg unsigned [SCALING_FACTOR_WIDTH-1:0]         LUT  [1:CIC_R];
+    (* ram_style = "distributed" *) reg unsigned [EXACT_SCALING_FACTOR_WIDTH-1:0]   LUT2 [1:CIC_R];
     initial begin
         // this LUT calculation in verilog is limited, it works for R=4095, N=6, M=1
         // if larger values are needed, do LUT calculation outside verilog, ie python
@@ -213,13 +214,17 @@ end
 if (VAR_RATE) begin
 
     localparam PIPELINE_STAGES = 3;
-    reg [ds_dw-1:0] data_buf[0:PIPELINE_STAGES-1];
+    reg  [ds_dw-1:0]                  data_buf[0:PIPELINE_STAGES-1];
     reg  [PIPELINE_STAGES-1:0]        valid_buf;
+    reg  [PIPELINE_STAGES-1:0]        rate_valid_buf;
+    reg  [CONFIG_DW - 1:0]            rate_data_buf [PIPELINE_STAGES-1:0];
     
     always_ff @(posedge clk) begin
         foreach(data_buf[j]) begin
             data_buf[j] <= !reset_n ? 0 : (j == 0 ? int_stage[CIC_N - 1].int_out : data_buf[j-1]);
             valid_buf[j] <= !reset_n ? 0 : (j == 0 ? s_axis_in_tvalid : valid_buf[j-1]);
+            rate_data_buf[j] <= !reset_n ? 0 : (j == 0 ? config_data : rate_data_buf[j-1]);
+            rate_valid_buf[j] <= !reset_n ? 0 : (j == 0 ? downsampler_rate_valid : rate_valid_buf[j-1]);
         end                 
     end       
 
@@ -233,8 +238,8 @@ if (VAR_RATE) begin
             .reset_n                (reset_n),
             .s_axis_in_tdata        (data_buf[PIPELINE_STAGES-1]),
             .s_axis_in_tvalid       (valid_buf[PIPELINE_STAGES-1]),
-            .s_axis_rate_tdata      (config_data),
-            .s_axis_rate_tvalid     (downsampler_rate_valid),
+            .s_axis_rate_tdata      (rate_data_buf[PIPELINE_STAGES-1]),
+            .s_axis_rate_tvalid     (rate_valid_buf[PIPELINE_STAGES-1]),
             .m_axis_out_tdata       (ds_out_samp_data),
             .m_axis_out_tvalid      (ds_out_samp_str)
         );
@@ -298,38 +303,57 @@ generate
     end
 endgenerate
 /*********************************************************************************************/
-reg signed      [OUT_DW-1+NUM_SHIFT:0]    comb_out_samp_data_reg;
-reg                                                  comb_out_samp_str_reg;
-reg unsigned    [EXACT_SCALING_FACTOR_WIDTH-1:0]     current_exact_scaling_factor_reg;
+// this mult pipeline is not necessary if EXACT_SCALING == 1, it is not used in this case
+localparam MULT_PIPELINE_STAGES = 2;
+reg signed      [dw_out-1:0]                         comb_out_samp_data_reg[MULT_PIPELINE_STAGES-1:0];
+reg             [MULT_PIPELINE_STAGES-1:0]           comb_out_samp_str_reg;
+reg signed      [EXACT_SCALING_FACTOR_WIDTH-1:0]     current_exact_scaling_factor_reg[MULT_PIPELINE_STAGES-1:0];
 
-always_ff @(posedge clk) begin
-    comb_out_samp_data_reg           <= !reset_n ? 0 : {{NUM_SHIFT{comb_stage[CIC_N - 1].comb_out[dw_out - 1]}},{(comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW])}};    
-    current_exact_scaling_factor_reg <= !reset_n ? 0 : current_exact_scaling_factor;
-    comb_out_samp_str_reg            <= !reset_n ? 0 : comb_chain_out_str;
+if (EXACT_SCALING) begin
+    always_ff @(posedge clk) begin
+        foreach(comb_out_samp_data_reg[k]) begin
+            if (k == 0) begin
+                comb_out_samp_data_reg[0]           <= !reset_n ? 0 : comb_stage[CIC_N - 1].comb_out;    
+                current_exact_scaling_factor_reg[0] <= !reset_n ? 0 : current_exact_scaling_factor;
+                comb_out_samp_str_reg[0]            <= !reset_n ? 0 : comb_chain_out_str;
+            end
+            else begin
+                comb_out_samp_data_reg[k]           <= !reset_n ? 0 : comb_out_samp_data_reg[k-1];                
+                current_exact_scaling_factor_reg[k] <= !reset_n ? 0 : current_exact_scaling_factor_reg[k-1];                
+                comb_out_samp_str_reg[k]            <= !reset_n ? 0 : comb_out_samp_str_reg[k-1];                
+            end
+        end
+    end
 end
+wire signed [dw_out-1+NUM_SHIFT:0] out_mult_result;
+if (EXACT_SCALING)
+    // this mult operation is done in OUT_DW+NUM_SHIFT bit, context-determined expression 
+    assign out_mult_result = comb_out_samp_data_reg[MULT_PIPELINE_STAGES-1] * current_exact_scaling_factor_reg[MULT_PIPELINE_STAGES-1];
 
+// output pipeline
 localparam OUT_PIPELINE_STAGES = 2;
-reg signed  [OUT_DW-1+NUM_SHIFT:0]       out_data_buf[0:OUT_PIPELINE_STAGES-1];
-reg         [OUT_PIPELINE_STAGES-1:0]               out_valid_buf;
-wire signed [OUT_DW-1+NUM_SHIFT:0]       out_mult_result;
-assign out_mult_result = comb_out_samp_data_reg * current_exact_scaling_factor_reg;
-
+reg signed  [OUT_DW-1:0]                 out_data_buf[OUT_PIPELINE_STAGES-1:0];
+reg         [OUT_PIPELINE_STAGES-1:0]    out_valid_buf;
 always_ff @(posedge clk) begin
-    if (EXACT_SCALING)
-        out_data_buf[0] <= !reset_n ? 0 : {{NUM_SHIFT{out_mult_result[OUT_DW-1+NUM_SHIFT]}},{out_mult_result[OUT_DW-1+NUM_SHIFT:NUM_SHIFT]}};  
-        // out_data_buf[0] <= out_mult_result >>> SCALING_FACTOR_SHIFT;   // why is this not working???
-    else
-        out_data_buf[0] <= !reset_n ? 0 : comb_out_samp_data_reg;
-    out_valid_buf[0] <= !reset_n ? 0 : comb_out_samp_str_reg;
-    for (integer j = 0; j < (OUT_PIPELINE_STAGES-1); j++) begin 
-        out_data_buf[j+1] <= !reset_n ? 0 : out_data_buf[j];
-        out_valid_buf[j+1] <= !reset_n ? 0 : out_valid_buf[j];
+    foreach(out_data_buf[j]) begin
+        if (j==0) begin
+            if (EXACT_SCALING) begin
+                out_data_buf[0]  <= !reset_n ? 0 : out_mult_result[OUT_DW - 1 + NUM_SHIFT + (dw_out - OUT_DW) : NUM_SHIFT  + (dw_out - OUT_DW)];  
+                out_valid_buf[0] <= !reset_n ? 0 : comb_out_samp_str_reg[MULT_PIPELINE_STAGES-1];         
+            end   
+            else begin
+                out_data_buf[0]  <= !reset_n ? 0 : comb_stage[CIC_N - 1].comb_out[dw_out - 1 -: OUT_DW];
+                out_valid_buf[0] <= !reset_n ? 0 : comb_chain_out_str;            
+            end
+        end
+        else begin
+            out_data_buf[j]  <= !reset_n ? 0 : out_data_buf[j-1];
+            out_valid_buf[j] <= !reset_n ? 0 : out_valid_buf[j-1];
+        end
     end
 end
 
-wire unsigned [OUT_DW-1+NUM_SHIFT:0] out_pipeline_output;
-assign out_pipeline_output   = out_data_buf[OUT_PIPELINE_STAGES-1];
-assign m_axis_out_tdata      = out_pipeline_output[OUT_DW-1:0];
+assign m_axis_out_tdata      = out_data_buf[OUT_PIPELINE_STAGES-1];
 assign m_axis_out_tvalid     = out_valid_buf[OUT_PIPELINE_STAGES-1];
 /*********************************************************************************************/
 
