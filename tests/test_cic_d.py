@@ -107,7 +107,7 @@ class TB(object):
         self.dut.s_axis_rate_tvalid <= 0
         await RisingEdge(self.dut.clk)
         # set output scaling
-        mult_number = 1
+        mult_number = gain_diff >> shift_number
         self.dut.s_axis_rate_tdata <= (2 << (self.RATE_DW-2)) + mult_number
         self.dut.s_axis_rate_tvalid <= 1
         await RisingEdge(self.dut.clk)
@@ -378,11 +378,10 @@ def test_cic_d_variable_rate(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VAR_RATE
 @pytest.mark.parametrize("OUT_DW", [32])
 @pytest.mark.parametrize("RATE_DW", [32])
 @pytest.mark.parametrize("VAR_RATE", [1])
-@pytest.mark.parametrize("EXACT_SCALING", [0])
-@pytest.mark.parametrize("NUM_SHIFT", [5*3])
+@pytest.mark.parametrize("EXACT_SCALING", [0, 1])
 @pytest.mark.parametrize("PRG_SCALING", [1])
 @pytest.mark.parametrize("CALC_PRUNING", [1])
-def test_cic_d_programmable_scaling(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VAR_RATE, EXACT_SCALING, NUM_SHIFT, PRG_SCALING, CALC_PRUNING):
+def test_cic_d_programmable_scaling(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VAR_RATE, EXACT_SCALING, PRG_SCALING, CALC_PRUNING):
     dut = "cic_d"
     module = os.path.splitext(os.path.basename(__file__))[0]
     toplevel = dut
@@ -409,7 +408,7 @@ def test_cic_d_programmable_scaling(request, R, N, M, INP_DW, OUT_DW, RATE_DW, V
     parameters['RATE_DW'] = RATE_DW
     parameters['VAR_RATE'] = VAR_RATE
     parameters['EXACT_SCALING'] = EXACT_SCALING
-    parameters['NUM_SHIFT'] = NUM_SHIFT
+    parameters['NUM_SHIFT'] = 5*N
     parameters['PRG_SCALING'] = PRG_SCALING
     if CALC_PRUNING:
         parameters['PRUNE_BITS'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
