@@ -13,7 +13,7 @@ module cic_d
     parameter VAR_RATE = 1,
     parameter EXACT_SCALING = 1,
     parameter PRG_SCALING = 0,
-    parameter NUM_SHIFT = 5 * CIC_N
+    parameter NUM_SHIFT = 5*CIC_N
 )
 /*********************************************************************************************/
 (
@@ -29,7 +29,7 @@ module cic_d
 /*********************************************************************************************/
 `include "cic_functions.vh"
 /*********************************************************************************************/
-localparam  NUM_SHIFT_HELPTER = 5 * CIC_N; // this is a workaround for vivado 2020.2, because it does not update NUM_SHIFT to the new value before initial is run
+localparam  NUM_SHIFT_HELPER = PRG_SCALING ? NUM_SHIFT : 5 * CIC_N; // this is a workaround, because it dependent default parameters dont work well with vivado blockdesigns
 localparam bit unsigned [127:0]     Gain_max = (128'(CIC_R) * CIC_M) ** CIC_N;
 localparam      B_max = clog2_l(Gain_max) + INP_DW;
 localparam      truncated_bits = B_max - OUT_DW;
@@ -53,10 +53,10 @@ function integer get_prune_bits(input integer i);
 endfunction
 
 localparam      SCALING_FACTOR_WIDTH = clog2_l(128'(clog2_l((CIC_R * CIC_M) ** CIC_N))) + 1;
-localparam      EXACT_SCALING_FACTOR_WIDTH = PRG_SCALING ? RATE_DW - 2 : SCALING_FACTOR_WIDTH + NUM_SHIFT + 1;
+localparam      EXACT_SCALING_FACTOR_WIDTH = PRG_SCALING ? RATE_DW - 2 : SCALING_FACTOR_WIDTH + NUM_SHIFT_HELPER + 1;
 localparam      CONFIG_DW = PRG_SCALING ? RATE_DW - 2 : RATE_DW;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]       current_scaling_factor = 0;
-reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0] current_exact_scaling_factor = (((128'(2))**clog2_l(Gain_max))<<NUM_SHIFT)/Gain_max;
+reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0] current_exact_scaling_factor = (((128'(2))**clog2_l(Gain_max))<<NUM_SHIFT_HELPER)/Gain_max;
 wire downsampler_rate_valid;
 wire [CONFIG_DW - 1:0] config_data;
 assign config_data = s_axis_rate_tdata[CONFIG_DW - 1:0];
@@ -75,11 +75,11 @@ if (PRG_SCALING) begin
         else if (s_axis_rate_tvalid) begin
             // $display("config_addr = %d", config_addr);
             if (config_addr == 1) begin
-                scaling_factor_buf       <= !reset_n ? 0 : config_data;
+                scaling_factor_buf       <= config_data;
                 $display("shift_number = %d", config_data);
             end
             else if (config_addr == 2) begin
-                exact_scaling_factor_buf <= !reset_n ? 0 : config_data;
+                exact_scaling_factor_buf <= config_data;
                 $display("mult_number = %d", config_data);
             end
         end
@@ -104,11 +104,11 @@ if  (!PRG_SCALING && VAR_RATE) begin
         reg unsigned [31:0] pre_shift;
         reg unsigned [127:0] post_mult;
         reg unsigned [clog2_l(CIC_R):0] small_r;
-        $display("R = %d  N = %d  M = %d  INP_DW = %d  OUT_DW = %d  NUM_SHIFT = %d", CIC_R, CIC_N, CIC_N, INP_DW, OUT_DW, NUM_SHIFT_HELPTER);
+        $display("R = %d  N = %d  M = %d  INP_DW = %d  OUT_DW = %d  NUM_SHIFT = %d", CIC_R, CIC_N, CIC_N, INP_DW, OUT_DW, NUM_SHIFT_HELPER);
         for(integer r=1;r<=CIC_R;r++) begin
             small_r = r[clog2_l(CIC_R):0];
-            gain_diff = (((128'(CIC_R) << (NUM_SHIFT_HELPTER / CIC_N)) / 128'(r)) ** CIC_N);
-            pre_shift = flog2_l(gain_diff >> (NUM_SHIFT_HELPTER)); 
+            gain_diff = (((128'(CIC_R) << (NUM_SHIFT_HELPER / CIC_N)) / 128'(r)) ** CIC_N);
+            pre_shift = flog2_l(gain_diff >> (NUM_SHIFT_HELPER)); 
             LUT[small_r] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
             if (EXACT_SCALING) begin
                 // this calculation only makes the frequency response equal to the r = CIC_R case
@@ -116,18 +116,14 @@ if  (!PRG_SCALING && VAR_RATE) begin
                 post_mult = (gain_diff >> pre_shift);
                 LUT2[small_r] = post_mult[EXACT_SCALING_FACTOR_WIDTH-1:0];
             end
-            $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", r, pre_shift[SCALING_FACTOR_WIDTH-1:0], 128'(2)**pre_shift, gain_diff>>NUM_SHIFT_HELPTER, post_mult[EXACT_SCALING_FACTOR_WIDTH-1:0]);
+            $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", r, pre_shift[SCALING_FACTOR_WIDTH-1:0], 128'(2)**pre_shift, gain_diff>>NUM_SHIFT_HELPER, post_mult[EXACT_SCALING_FACTOR_WIDTH-1:0]);
         end
     end           
 
     reg unsigned       [SCALING_FACTOR_WIDTH-1:0]           scaling_factor_buf = 0;
     reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0]     exact_scaling_factor_buf = 0;
     always_ff @(posedge clk) begin
-        if (!reset_n) begin
-            scaling_factor_buf <= 0;
-            exact_scaling_factor_buf <= 0;
-        end
-        else if (s_axis_rate_tvalid) begin
+        if (s_axis_rate_tvalid) begin
             scaling_factor_buf <= !reset_n ? 0 : LUT[s_axis_rate_tdata[clog2_l(CIC_R):0]];
             if (EXACT_SCALING)
                 exact_scaling_factor_buf <= !reset_n ? 0 : LUT2[s_axis_rate_tdata[clog2_l(CIC_R):0]];
@@ -150,7 +146,7 @@ generate
         localparam odw_cur = B_max - B_j;           ///< data width on the output
         
         wire signed [idw_cur - 1 : 0] int_in;           ///< input data bus
-        if ( i == 0 )   
+        if (i == 0)   
             if ((idw_cur-INP_DW) >= 0)
                 assign int_in = {{(idw_cur-INP_DW){s_axis_in_tdata[INP_DW-1]}},s_axis_in_tdata};
             else
@@ -164,14 +160,18 @@ generate
             reg [idw_cur-1:0] data_buf[0:PIPELINE_STAGES-1];
             reg  [PIPELINE_STAGES-1:0]        valid_buf;
             always_ff @(posedge clk) begin
-                if(i == 0)
-                    data_buf[0] <= !reset_n ? 0 : (int_in << current_scaling_factor);
-                else
-                    data_buf[0] <= !reset_n ? 0 : int_in;
-                valid_buf[0] <= !reset_n ? 0 : s_axis_in_tvalid;
-                for (integer j = 0; j < (PIPELINE_STAGES-1); j++) begin 
-                    data_buf[j+1] <= !reset_n ? 0 : data_buf[j];
-                    valid_buf[j+1] <= !reset_n ? 0 : valid_buf[j];
+                foreach(data_buf[j]) begin
+                    if (j == 0) begin
+                        if(i == 0)
+                            data_buf[0] <= !reset_n ? 0 : (int_in << current_scaling_factor);
+                        else
+                            data_buf[0] <= !reset_n ? 0 : int_in;
+                        valid_buf[0] <= !reset_n ? 0 : s_axis_in_tvalid;
+                    end
+                    else begin
+                        data_buf[j]  <= !reset_n ? 0 : data_buf[j-1];
+                        valid_buf[j] <= !reset_n ? 0 : valid_buf[j-1];
+                    end
                 end                 
             end   
             integrator #(
@@ -345,7 +345,7 @@ always_ff @(posedge clk) begin
     foreach(out_data_buf[j]) begin
         if (j==0) begin
             if (EXACT_SCALING) begin
-                out_data_buf[0]  <= !reset_n ? 0 : out_mult_result[dw_out - 1 + NUM_SHIFT_HELPTER : NUM_SHIFT_HELPTER  + (dw_out - OUT_DW)];  
+                out_data_buf[0]  <= !reset_n ? 0 : out_mult_result[dw_out - 1 + NUM_SHIFT_HELPER : NUM_SHIFT_HELPER  + (dw_out - OUT_DW)];  
                 out_valid_buf[0] <= !reset_n ? 0 : comb_out_samp_str_reg[MULT_PIPELINE_STAGES-1];         
             end   
             else begin

@@ -95,11 +95,13 @@ class TB(object):
         
     async def programm_scaling_parameters(self):
         # set input shift scaling
+        self.NUM_SHIFT = 5*self.N
+        assert (self.NUM_SHIFT <= self.RATE_DW-2), F"RATE_DW = {self.RATE_DW} is too small for NUM_SHIFT = {self.NUM_SHIFT}"
         await RisingEdge(self.dut.clk)
-        NUM_SHIFT = 5*self.N
-        gain_diff = int(np.floor(self.initial_R << int(NUM_SHIFT / self.N)) / self.R) ** self.N;
-        shift_number = int(np.floor(np.log2((gain_diff >> NUM_SHIFT))))
+        gain_diff = int(np.floor(self.initial_R << int(self.NUM_SHIFT / self.N)) / self.R) ** self.N;
+        shift_number = int(np.floor(np.log2((gain_diff >> self.NUM_SHIFT))))
         #print(F"shift_number = {shift_number}")
+        #self.dut.s_axis_rate_tdata <= (1 << (self.RATE_DW-2)) + (shift_number & (2**(self.RATE_DW-2)-1))
         self.dut.s_axis_rate_tdata <= (1 << (self.RATE_DW-2)) + shift_number
         self.dut.s_axis_rate_tvalid <= 1
         await RisingEdge(self.dut.clk)
@@ -108,6 +110,7 @@ class TB(object):
         await RisingEdge(self.dut.clk)
         # set output scaling
         mult_number = gain_diff >> shift_number
+        #self.dut.s_axis_rate_tdata <= (2 << (self.RATE_DW-2)) + (mult_number & (2**(self.RATE_DW-2)-1))
         self.dut.s_axis_rate_tdata <= (2 << (self.RATE_DW-2)) + mult_number
         self.dut.s_axis_rate_tvalid <= 1
         await RisingEdge(self.dut.clk)
@@ -227,14 +230,14 @@ async def programmable_scaling_test(dut):
             await RisingEdge(dut.clk)
             if(tb.model.data_valid()):
                 output_model.append(tb.model.get_data())
-                #print(f"model:\t[{len(output_model)}]\t {int(output_model[-1])} \t {output_model[-1]/max_out_value}")
+                print(f"model:\t[{len(output_model)}]\t {int(output_model[-1])} \t {output_model[-1]/max_out_value}")
 
             if dut.m_axis_out_tvalid == 1:
                 a=dut.m_axis_out_tdata.value.integer
                 if (a & (1 << (tb.OUT_DW - 1))) != 0:
                     a = a - (1 << tb.OUT_DW)
                 output.append(a)
-                #print(f"hdl: \t[{len(output)}]\t {int(a)} \t {a/max_out_value} ")
+                print(f"hdl: \t[{len(output)}]\t {int(a)} \t {a/max_out_value} ")
             #print(f"{int(tb.model.data_valid())} {dut.m_axis_out_tvalid}")
             count += 1
             if count > max_count:

@@ -24,10 +24,9 @@ reg [DATA_WIDTH_RATE - 1 : 0] rate_buf;
 always @(posedge clk)
 begin
     if (!reset_n)
-        rate_buf <= '1;
-    else if (s_axis_rate_tvalid) begin
+        rate_buf <= 1;
+    else if (s_axis_rate_tvalid)
         rate_buf <= s_axis_rate_tdata;
-    end
 end
 /*********************************************************************************************/
 // decimation counter
