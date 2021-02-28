@@ -29,6 +29,7 @@ module cic_d
 /*********************************************************************************************/
 `include "cic_functions.vh"
 /*********************************************************************************************/
+localparam  NUM_SHIFT_HELPTER = 5 * CIC_N; // this is a workaround for vivado 2020.2, because it does not update NUM_SHIFT to the new value before initial is run
 localparam bit unsigned [127:0]     Gain_max = (128'(CIC_R) * CIC_M) ** CIC_N;
 localparam      B_max = clog2_l(Gain_max) + INP_DW;
 localparam      truncated_bits = B_max - OUT_DW;
@@ -103,12 +104,11 @@ if  (!PRG_SCALING && VAR_RATE) begin
         reg unsigned [31:0] pre_shift;
         reg unsigned [127:0] post_mult;
         reg unsigned [clog2_l(CIC_R):0] small_r;
-        $display("R = %d  N = %d  M = %d  INP_DW = %d  OUT_DW = %d  NUM_SHIFT = %d", CIC_R, CIC_N, CIC_N, INP_DW, OUT_DW, NUM_SHIFT);
-        $display("x = %d", (128'(CIC_R) << (NUM_SHIFT / CIC_N)));
+        $display("R = %d  N = %d  M = %d  INP_DW = %d  OUT_DW = %d  NUM_SHIFT = %d", CIC_R, CIC_N, CIC_N, INP_DW, OUT_DW, NUM_SHIFT_HELPTER);
         for(integer r=1;r<=CIC_R;r++) begin
             small_r = r[clog2_l(CIC_R):0];
-            gain_diff = (((128'(CIC_R) << (NUM_SHIFT / CIC_N)) / 128'(r)) ** CIC_N);
-            pre_shift = flog2_l(gain_diff >> (NUM_SHIFT)); 
+            gain_diff = (((128'(CIC_R) << (NUM_SHIFT_HELPTER / CIC_N)) / 128'(r)) ** CIC_N);
+            pre_shift = flog2_l(gain_diff >> (NUM_SHIFT_HELPTER)); 
             LUT[small_r] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
             if (EXACT_SCALING) begin
                 // this calculation only makes the frequency response equal to the r = CIC_R case
@@ -116,7 +116,7 @@ if  (!PRG_SCALING && VAR_RATE) begin
                 post_mult = (gain_diff >> pre_shift);
                 LUT2[small_r] = post_mult[EXACT_SCALING_FACTOR_WIDTH-1:0];
             end
-            $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", r, pre_shift[SCALING_FACTOR_WIDTH-1:0], 128'(2)**pre_shift, gain_diff>>NUM_SHIFT, post_mult[EXACT_SCALING_FACTOR_WIDTH-1:0]);
+            $display("scaling_factor[%d] = %d  factor rounded = %d  factor exact = %d  mult = %d", r, pre_shift[SCALING_FACTOR_WIDTH-1:0], 128'(2)**pre_shift, gain_diff>>NUM_SHIFT_HELPTER, post_mult[EXACT_SCALING_FACTOR_WIDTH-1:0]);
         end
     end           
 
@@ -345,7 +345,7 @@ always_ff @(posedge clk) begin
     foreach(out_data_buf[j]) begin
         if (j==0) begin
             if (EXACT_SCALING) begin
-                out_data_buf[0]  <= !reset_n ? 0 : out_mult_result[dw_out - 1 + NUM_SHIFT : NUM_SHIFT  + (dw_out - OUT_DW)];  
+                out_data_buf[0]  <= !reset_n ? 0 : out_mult_result[dw_out - 1 + NUM_SHIFT_HELPTER : NUM_SHIFT_HELPTER  + (dw_out - OUT_DW)];  
                 out_valid_buf[0] <= !reset_n ? 0 : comb_out_samp_str_reg[MULT_PIPELINE_STAGES-1];         
             end   
             else begin
