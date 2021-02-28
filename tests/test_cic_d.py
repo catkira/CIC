@@ -101,8 +101,7 @@ class TB(object):
         gain_diff = int(np.floor(self.initial_R << int(self.NUM_SHIFT / self.N)) / self.R) ** self.N;
         shift_number = int(np.floor(np.log2((gain_diff >> self.NUM_SHIFT))))
         #print(F"shift_number = {shift_number}")
-        #self.dut.s_axis_rate_tdata <= (1 << (self.RATE_DW-2)) + (shift_number & (2**(self.RATE_DW-2)-1))
-        self.dut.s_axis_rate_tdata <= (1 << (self.RATE_DW-2)) + shift_number
+        self.dut.s_axis_rate_tdata <= (1 << (self.RATE_DW-2)) + (shift_number & (2**(self.RATE_DW-2)-1))
         self.dut.s_axis_rate_tvalid <= 1
         await RisingEdge(self.dut.clk)
 
@@ -110,8 +109,7 @@ class TB(object):
         await RisingEdge(self.dut.clk)
         # set output scaling
         mult_number = gain_diff >> shift_number
-        #self.dut.s_axis_rate_tdata <= (2 << (self.RATE_DW-2)) + (mult_number & (2**(self.RATE_DW-2)-1))
-        self.dut.s_axis_rate_tdata <= (2 << (self.RATE_DW-2)) + mult_number
+        self.dut.s_axis_rate_tdata <= (2 << (self.RATE_DW-2)) + (mult_number & (2**(self.RATE_DW-2)-1))
         self.dut.s_axis_rate_tvalid <= 1
         await RisingEdge(self.dut.clk)
         self.dut.s_axis_rate_tvalid <= 0

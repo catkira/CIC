@@ -51,19 +51,7 @@ class Model:
         
     def set_rate(self, rate):
         self.R = rate
-        self.decimation_counter = 0;
-        # the following is almost like a reset, but doesnt reset the decimation counter!
-        self.cic_push_ptr = 0
-        self.data_in_buf = 0       
-        self.in_valid = 0
-        self.cic_taps = np.zeros(self.R * self.M * self.N)        
-        self.data_out_buf = np.zeros(self.extra_delay+1)
-        self.data_out_buf_2 = np.zeros(self.extra_delay_2+1)
-        self.out_valid = np.zeros(self.extra_delay+1)
-        self.out_valid_2 = np.zeros(self.extra_delay_2+1)        
-        self.CIC_Filter_Gain = (self.R*self.M)**self.N        
-        self.Num_of_Bits_Growth = np.ceil(math.log2(self.CIC_Filter_Gain))
-        self.Num_Output_Bits_Without_Truncation = self.Num_of_Bits_Growth + self.INP_DW
+        self.reset()
 
     def set_data(self, data_in):
         self.data_in_buf = data_in
