@@ -198,6 +198,7 @@ async def variable_rate_test(dut):
                 assert np.abs(output[i] - output_model[i])/max_out_value <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"
             else:
                 assert np.abs(output[i] - output_model[i]) <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"
+    assert False
                 
 @cocotb.test()
 async def programmable_scaling_test(dut):

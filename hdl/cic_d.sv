@@ -9,12 +9,11 @@ module cic_d
     parameter CIC_R = 10,           // decimation ratio, if VAR_RATE = 1, R has to be set to the maximum decimation ratio
     parameter CIC_N = 7,            // number of stages
     parameter CIC_M = 1,            // delay in comb
-    /* verilator lint_off WIDTH */
     parameter [32*(CIC_N*2+2)-1:0] PRUNE_BITS = {(CIC_N*2+2){32'd0}},   // stage width can be given as a parameter to speed up synthesis
     parameter VAR_RATE = 1,
     parameter EXACT_SCALING = 1,
-    parameter NUM_SHIFT = 5 * CIC_N,
-    parameter PRG_SCALING = 0
+    parameter PRG_SCALING = 0,
+    parameter NUM_SHIFT = 5 * CIC_N
 )
 /*********************************************************************************************/
 (
@@ -52,14 +51,14 @@ function integer get_prune_bits(input integer i);
     end
 endfunction
 
-localparam      SCALING_FACTOR_WIDTH = clog2_l(clog2_l((CIC_R * CIC_M) ** CIC_N)) + 1;
+localparam      SCALING_FACTOR_WIDTH = clog2_l(128'(clog2_l((CIC_R * CIC_M) ** CIC_N))) + 1;
 localparam      EXACT_SCALING_FACTOR_WIDTH = PRG_SCALING ? RATE_DW - 2 : SCALING_FACTOR_WIDTH + NUM_SHIFT + 1;
 localparam      CONFIG_DW = PRG_SCALING ? RATE_DW - 2 : RATE_DW;
 reg unsigned       [SCALING_FACTOR_WIDTH-1:0]       current_scaling_factor = 0;
 reg unsigned       [EXACT_SCALING_FACTOR_WIDTH-1:0] current_exact_scaling_factor = (((128'(2))**clog2_l(Gain_max))<<NUM_SHIFT)/Gain_max;
 wire downsampler_rate_valid;
 wire [CONFIG_DW - 1:0] config_data;
-assign config_data = s_axis_rate_tdata[RATE_DW - 3:0];
+assign config_data = s_axis_rate_tdata[CONFIG_DW - 1:0];
 
 if (PRG_SCALING) begin
     reg unsigned       [CONFIG_DW-1:0]                        scaling_factor_buf = 0;
@@ -104,9 +103,11 @@ if  (!PRG_SCALING && VAR_RATE) begin
         reg unsigned [31:0] pre_shift;
         reg unsigned [127:0] post_mult;
         reg unsigned [clog2_l(CIC_R):0] small_r;
+        $display("R = %d  N = %d  M = %d  INP_DW = %d  OUT_DW = %d  NUM_SHIFT = %d", CIC_R, CIC_N, CIC_N, INP_DW, OUT_DW, NUM_SHIFT);
+        $display("x = %d", (128'(CIC_R) << (NUM_SHIFT / CIC_N)));
         for(integer r=1;r<=CIC_R;r++) begin
             small_r = r[clog2_l(CIC_R):0];
-            gain_diff = (((127'(CIC_R) << (NUM_SHIFT / CIC_N)) / r) ** CIC_N);
+            gain_diff = (((128'(CIC_R) << (NUM_SHIFT / CIC_N)) / 128'(r)) ** CIC_N);
             pre_shift = flog2_l(gain_diff >> (NUM_SHIFT)); 
             LUT[small_r] = pre_shift[SCALING_FACTOR_WIDTH-1:0]; 
             if (EXACT_SCALING) begin
@@ -127,9 +128,9 @@ if  (!PRG_SCALING && VAR_RATE) begin
             exact_scaling_factor_buf <= 0;
         end
         else if (s_axis_rate_tvalid) begin
-            scaling_factor_buf <= !reset_n ? 0 : LUT[s_axis_rate_tdata];
+            scaling_factor_buf <= !reset_n ? 0 : LUT[s_axis_rate_tdata[clog2_l(CIC_R):0]];
             if (EXACT_SCALING)
-                exact_scaling_factor_buf <= !reset_n ? 0 : LUT2[s_axis_rate_tdata];
+                exact_scaling_factor_buf <= !reset_n ? 0 : LUT2[s_axis_rate_tdata[clog2_l(CIC_R):0]];
             // $display("pre_shift = %d   rate = %d  lut-width = %d" , LUT[s_axis_rate_tdata], s_axis_rate_tdata,SCALING_FACTOR_WIDTH);
         end
         // one pipeline stage
@@ -234,7 +235,7 @@ if (VAR_RATE) begin
 
     downsampler_variable #(
             .DATA_WIDTH_INP (ds_dw),
-            .DATA_WIDTH_RATE (RATE_DW - 2)
+            .DATA_WIDTH_RATE (CONFIG_DW)
         )
         downsampler_variable_inst
         (
@@ -251,7 +252,7 @@ end
 else begin
     downsampler #(
             .DATA_WIDTH_INP (ds_dw),
-            .CIC_R                  (CIC_R)
+            .CIC_R          (CIC_R)
         )
         downsampler_inst
         (
