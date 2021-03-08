@@ -43,6 +43,7 @@ pytest -v --workers 10
 
 ## TODO
 - add CIC interpolator
+- add rounding to last stage of decimator
 
 ## License
 GPL
