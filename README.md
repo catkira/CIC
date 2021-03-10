@@ -65,6 +65,7 @@ pytest -v --workers 10
 - https://en.wikipedia.org/wiki/Rounding
 - https://realpython.com/python-rounding/
 - https://zipcpu.com/dsp/2017/07/22/rounding.html
+- https://patents.google.com/patent/US20080028014A1/en
 - https://www.xilinx.com/support/documentation/user_guides/ug193.pdf
 - https://www.dsprelated.com/showarticle/1337.php
 - https://www.design-reuse.com/articles/10028/understanding-cascaded-integrator-comb-filters.html
