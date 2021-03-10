@@ -32,7 +32,7 @@ The main differences are
 
 ## Rounding
 In signal processing applications it is usually desired to have a rounding method that does not produce a dc bias, these methods are called symmetric. They work by rounding up or down to the nearest integer whether the decimal value is larger or smaller than 0.5. If the decimal value is is exactly 0.5 a tie-breaker is needed. A commonly used method is [round-half-to-even](https://en.wikipedia.org/wiki/Rounding#Round_half_to_even), this is also the default method of the round() function in Python and in the IEEE 754 floating point standard. Xilinx and [Matlab](https://de.mathworks.com/help/fixedpoint/ug/rounding-mode-convergent.html) call this method *convergent rounding towards even*.
-Another possibility is to use alternate or random tie-breaking. However alternate tie-breaking needs to remember the last rounding direction and random tie-breakign needs a random source. Some DSP components like the Xilinx complex multiplier use random tie-breaking and have a separate input, for the bit that decides tie-breaking.
+Another possibility is to use alternate or random tie-breaking. However alternate tie-breaking needs to remember the last rounding direction and random tie-breakign needs a random source. Some DSP components like the Xilinx complex multiplier use random tie-breaking and have a separate input, for the bit that decides tie-breaking. Depending on that bit it switches between round-half-up and round-half-down.
 I have not yet decided whether to implement round-half-to-even or random tie-breaking for this CIC.
 
 ### Rounding in Xilinx FPGAs using the DSP48 units
