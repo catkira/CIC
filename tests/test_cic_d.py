@@ -98,17 +98,27 @@ class TB(object):
         self.NUM_SHIFT = 5*self.N
         assert (self.NUM_SHIFT <= self.RATE_DW-2), F"RATE_DW = {self.RATE_DW} is too small for NUM_SHIFT = {self.NUM_SHIFT}"
         await RisingEdge(self.dut.clk)
-        gain_diff = int(np.floor(self.initial_R << int(self.NUM_SHIFT / self.N)) / self.R) ** self.N;
-        shift_number = int(np.floor(np.log2((gain_diff >> self.NUM_SHIFT))))
-        #print(F"shift_number = {shift_number}")
+        shift_number = 0;
+        mult_number = 0;
+        if True:
+            # exact floating-point calculation
+            gain_factor_log2 = self.N * np.log2( 2**np.log2(self.initial_R) / self.R )
+            shift_number = int(gain_factor_log2) # rounded down
+            mult_number = int(2**(gain_factor_log2 - shift_number) * 2**self.NUM_SHIFT) 
+        if False:
+            # fixed point calculation, needs more tolerance when testing against the model
+            gain_diff = int(np.floor(self.initial_R << int(self.NUM_SHIFT / self.N)) / self.R) ** self.N;
+            shift_number = int(np.floor(np.log2((gain_diff >> self.NUM_SHIFT))))
+            mult_number = gain_diff >> shift_number
+            
+        print(F"shift_number = {shift_number}")
+        print(F"mult_number = {mult_number}")
         self.dut.s_axis_rate_tdata <= (1 << (self.RATE_DW-2)) + (shift_number & (2**(self.RATE_DW-2)-1))
         self.dut.s_axis_rate_tvalid <= 1
         await RisingEdge(self.dut.clk)
-
         self.dut.s_axis_rate_tvalid <= 0
         await RisingEdge(self.dut.clk)
         # set output scaling
-        mult_number = gain_diff >> shift_number
         self.dut.s_axis_rate_tdata <= (2 << (self.RATE_DW-2)) + (mult_number & (2**(self.RATE_DW-2)-1))
         self.dut.s_axis_rate_tvalid <= 1
         await RisingEdge(self.dut.clk)
@@ -171,8 +181,9 @@ async def variable_rate_test(dut):
         gen = cocotb.fork(tb.generate_input())
         tolerance = 1
         if tb.EXACT_SCALING:
-            # exact scaling needs a bit more tolerance because of rounding errors
-            tolerance = 0.005        
+            # hdl code calculates scaling parameter using fixed point, therefore needs more tolerance
+            # it is recommended to use PROGRAMMABLE_SCALING if possible and calculate scaling parameters using floating point
+            tolerance = 0.005    
         count = 0;
         max_count = num_items * rate * 2;
         max_out_value = (2**(tb.OUT_DW-1)-1)
@@ -220,7 +231,7 @@ async def programmable_scaling_test(dut):
         tolerance = 1
         if tb.EXACT_SCALING:
             # exact scaling needs a bit more tolerance because of rounding errors
-            tolerance = 0.005        
+            tolerance = 0.0005    # 0.0005 is enough if fp is used for calculation of the exact scaling factor   
         count = 0;
         max_count = num_items * rate * 2;
         max_out_value = (2**(tb.OUT_DW-1)-1)
@@ -246,7 +257,7 @@ async def programmable_scaling_test(dut):
             if tb.EXACT_SCALING:
                 assert np.abs(output[i] - output_model[i])/max_out_value <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"
             else:
-                assert np.abs(output[i] - output_model[i]) <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"       
+                assert np.abs(output[i] - output_model[i]) <= tolerance, f"hdl: {output[i]} \t model: {output_model[i]}"      
 # cocotb-test
 
 
