@@ -102,7 +102,7 @@ class TB(object):
         mult_number = 0;
         if True:
             # exact floating-point calculation
-            gain_factor_log2 = self.N * np.log2( 2**np.log2(self.initial_R) / self.R )
+            gain_factor_log2 = self.N * np.log2( 2**np.ceil(np.log2(self.initial_R)) / self.R )
             shift_number = int(gain_factor_log2) # rounded down
             mult_number = int(2**(gain_factor_log2 - shift_number) * 2**self.NUM_SHIFT) 
         if False:
@@ -383,7 +383,7 @@ def test_cic_d_variable_rate(request, R, N, M, INP_DW, OUT_DW, RATE_DW, VAR_RATE
         testcase="variable_rate_test",        
     )    
     
-@pytest.mark.parametrize("R", [4095])    # max rate
+@pytest.mark.parametrize("R", [4095, 4040])    # max rate
 @pytest.mark.parametrize("N", [3, 5])
 @pytest.mark.parametrize("M", [1])
 @pytest.mark.parametrize("INP_DW", [32])
