@@ -421,6 +421,7 @@ def test_cic_d_programmable_scaling(request, R, N, M, INP_DW, OUT_DW, RATE_DW, V
     parameters['VAR_RATE'] = VAR_RATE
     parameters['EXACT_SCALING'] = EXACT_SCALING
     parameters['NUM_SHIFT'] = RATE_DW - 4 # use all possible bits 
+    # TODO: assume MSB of exact scaling factor is always 1, can use 1 more bit in that case
     parameters['PRG_SCALING'] = PRG_SCALING
     if CALC_PRUNING:
         parameters['PRUNE_BITS'] = calculate_prune_bits(R, N, M, INP_DW, OUT_DW)
