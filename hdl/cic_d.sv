@@ -202,7 +202,7 @@ generate
                 .clk            (clk),
                 .reset_n        (reset_n),
                 .inp_samp_data  (int_in),
-                .inp_samp_str   (s_axis_in_tvalid),
+                .inp_samp_str   (valid_in),
                 .out_samp_data  (int_out),
                 .out_samp_str   (valid_out)
                 );
@@ -235,7 +235,7 @@ if (VAR_RATE) begin
     always_ff @(posedge clk) begin
         foreach(data_buf[j]) begin
             data_buf[j] <= !reset_n ? 0 : (j == 0 ? int_stage[CIC_N - 1].int_out : data_buf[j-1]);
-            valid_buf[j] <= !reset_n ? 0 : (j == 0 ? s_axis_in_tvalid : valid_buf[j-1]);
+            valid_buf[j] <= !reset_n ? 0 : (j == 0 ? int_stage[CIC_N - 1].valid_out : valid_buf[j-1]);
             rate_data_buf[j] <= !reset_n ? 0 : (j == 0 ? config_data : rate_data_buf[j-1]);
             rate_valid_buf[j] <= !reset_n ? 0 : (j == 0 ? downsampler_rate_valid : rate_valid_buf[j-1]);
         end                 
@@ -267,7 +267,7 @@ else begin
             .clk                    (clk),
             .reset_n                (reset_n),
             .s_axis_in_tdata        (int_stage[CIC_N - 1].int_out),
-            .s_axis_in_tvalid       (s_axis_in_tvalid),
+            .s_axis_in_tvalid       (int_stage[CIC_N - 1].valid_out),
             .m_axis_out_tdata       (ds_out_samp_data),
             .m_axis_out_tvalid      (ds_out_samp_str)
         );

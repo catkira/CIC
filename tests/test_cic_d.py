@@ -144,14 +144,14 @@ async def simple_test(dut):
         await RisingEdge(dut.clk)
         if(tb.model.data_valid()):
             output_model.append(tb.model.get_data())
-            #print(f"model:\t[{len(output_model)}]\t {int(output_model[-1])} \t {output_model[-1]/max_out_value}")
+            print(f"model:\t[{len(output_model)}]\t {int(output_model[-1])} \t {output_model[-1]/max_out_value}")
 
         if dut.m_axis_out_tvalid == 1:
             a=dut.m_axis_out_tdata.value.integer
             if (a & (1 << (tb.OUT_DW - 1))) != 0:
                 a = a - (1 << tb.OUT_DW)
             output.append(a)
-            #print(f"hdl: \t[{len(output)}]\t {int(a)} \t {a/max_out_value} ")
+            print(f"hdl: \t[{len(output)}]\t {int(a)} \t {a/max_out_value} ")
         #print(f"{int(tb.model.data_valid())} {dut.m_axis_out_tvalid}")
         count += 1
         if count > max_count:

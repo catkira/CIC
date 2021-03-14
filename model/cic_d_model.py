@@ -20,20 +20,16 @@ class Model:
         self.data_in_buf = 0
         
         if VAR_RATE:
-            self.extra_delay   = 4 + (self.N-1)*3     
-            self.downsampler_delay = 0
+            self.extra_delay   = 1 + (self.N-1)*1     
             self.extra_delay_2 = 4 + (self.N-1)*1 
         else:
-            self.extra_delay   = 1                   
-            self.downsampler_delay = 0
+            self.extra_delay   = 1 + (self.N-1)             
             self.extra_delay_2 = 4 + (self.N-1)*1 
             
         self.data_out_buf = np.zeros(self.extra_delay+1)
         self.data_out_buf_2 = np.zeros(self.extra_delay_2+1)
         self.out_valid = np.zeros(self.extra_delay+1)
         self.out_valid_2 = np.zeros(self.extra_delay_2+1)
-        self.valid_downsampler = np.zeros(self.downsampler_delay+1)
-        self.data_downsampler = np.zeros(self.downsampler_delay+1)
         self.in_valid = 0
         self.decimation_counter = 0;
 
@@ -72,38 +68,32 @@ class Model:
         self.Num_Output_Bits_Without_Truncation = self.Num_of_Bits_Growth + self.INP_DW        
         
     def tick(self):
-        # propagate data to next stage
-        for i_s in np.arange(self.N-1,0,-1):
-            self.cic_taps[self.cic_push_ptr + i_s * self.R*self.M] = self.cic_model_stage_get_out(i_s - 1)
-
 
         if self.in_valid == 1:
             self.cic_taps[self.cic_push_ptr] = self.data_in_buf
             self.cic_push_ptr = self.cic_push_ptr + 1 if self.cic_push_ptr < self.R*self.M - 1 else 0
             self.out_valid[0] = 1;
             self.in_valid = 0;
+
+        # propagate data to next stage
+        for i_s in np.arange(self.N-1,0,-1):
+            self.cic_taps[self.cic_push_ptr + i_s * self.R*self.M] = self.cic_model_stage_get_out(i_s - 1)
+
         
         self.data_out_buf[0] = self.get_scaled_data()
         for i in np.arange(self.extra_delay-1,-1,-1):
             self.data_out_buf[i+1] = self.data_out_buf[i]
-            #self.out_valid[i+1] = self.out_valid[i]  # not used
-            
-        # model pipelining before downsampler
-        self.valid_downsampler[0] = self.out_valid[0];
-        self.data_downsampler[0] = self.data_out_buf[self.extra_delay]
-        for i in np.arange(self.downsampler_delay-1,-1,-1):
-            self.valid_downsampler[i+1] = self.valid_downsampler[i]
-            self.data_downsampler[i+1] = self.data_downsampler[i]
+            self.out_valid[i+1] = self.out_valid[i]  # not used        
         
-        if self.valid_downsampler[self.downsampler_delay]:
+        if self.out_valid[self.extra_delay]:
             self.decimation_counter = self.decimation_counter + 1 if self.decimation_counter < (self.R-1) else 0
                     
-        if self.valid_downsampler[self.downsampler_delay] and self.decimation_counter == self.R-1:
+        if self.out_valid[self.extra_delay] and self.decimation_counter == self.R-1:
             self.out_valid_2[0] = 1
         else:
             self.out_valid_2[0] = 0
             
-        self.data_out_buf_2[0] = self.data_downsampler[self.downsampler_delay]
+        self.data_out_buf_2[0] = self.data_out_buf[0]
         for i in np.arange(self.extra_delay_2-1,-1,-1):
             self.data_out_buf_2[i+1] = self.data_out_buf_2[i]
             self.out_valid_2[i+1] = self.out_valid_2[i]
