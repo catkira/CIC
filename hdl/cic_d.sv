@@ -158,6 +158,7 @@ generate
             assign int_in = int_stage[i - 1].int_out;
             assign valid_in = int_stage[i - 1].valid_out;
         end
+        wire reset_in = reset_n && !s_axis_rate_tvalid;  // reset integrators if rate change happens
         wire signed [odw_cur - 1 : 0] int_out;
         wire valid_out;
         
@@ -186,7 +187,7 @@ generate
                 )
                 int_inst(
                 .clk            (clk),
-                .reset_n        (reset_n),
+                .reset_n        (reset_in),
                 .inp_samp_data  (data_buf[PIPELINE_STAGES-1]),
                 .inp_samp_str   (valid_buf[PIPELINE_STAGES-1]),
                 .out_samp_data  (int_out),
@@ -200,7 +201,7 @@ generate
                 )
                 int_inst(
                 .clk            (clk),
-                .reset_n        (reset_n),
+                .reset_n        (reset_in),
                 .inp_samp_data  (int_in),
                 .inp_samp_str   (valid_in),
                 .out_samp_data  (int_out),
@@ -239,8 +240,7 @@ if (VAR_RATE) begin
             rate_data_buf[j] <= !reset_n ? 0 : (j == 0 ? config_data : rate_data_buf[j-1]);
             rate_valid_buf[j] <= !reset_n ? 0 : (j == 0 ? downsampler_rate_valid : rate_valid_buf[j-1]);
         end                 
-    end       
-
+    end        
     downsampler_variable #(
             .DATA_WIDTH_INP (ds_dw),
             .DATA_WIDTH_RATE (CONFIG_DW)
@@ -293,6 +293,7 @@ generate
         wire comb_in_str;
         if (j == 0)     assign comb_in_str = ds_out_samp_str;
         else            assign comb_in_str = comb_stage[j - 1].comb_dv;
+        wire reset_in = reset_n && !s_axis_rate_tvalid;   // reset comb if rate change happens
         
         comb #(
                 .SAMP_WIDTH     (idw_cur),
@@ -300,7 +301,7 @@ generate
             )
             comb_inst(
                 .clk            (clk),
-                .reset_n        (reset_n),
+                .reset_n        (reset_in),
                 .samp_inp_str   (comb_in_str),
                 .samp_inp_data  (comb_in),
                 .samp_out_str   (comb_dv),
