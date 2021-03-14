@@ -75,7 +75,7 @@ pytest -v --workers 10
 - https://www.intel.com/content/dam/www/programmable/us/en/pdfs/literature/an/an455.pdf
 - https://www.koheron.com/blog/2016/10/03/decimator-cic-filter
 - https://liquidsdr.org/blog/firdespm-invsinc/
-
+- http://old.myhdl.org/doku.php/projects:gcicexample
 
 ## License
 GPL
