@@ -146,14 +146,20 @@ generate
         localparam odw_cur = B_max - B_j;           ///< data width on the output
         
         wire signed [idw_cur - 1 : 0] int_in;           ///< input data bus
-        if (i == 0)   
+        wire valid_in;
+        if (i == 0) begin
             if ((idw_cur-INP_DW) >= 0)
                 assign int_in = {{(idw_cur-INP_DW){s_axis_in_tdata[INP_DW-1]}},s_axis_in_tdata};
             else
                 assign int_in = s_axis_in_tdata[idw_cur-1:0];
-        else
+            assign valid_in = s_axis_in_tvalid;
+        end
+        else begin
             assign int_in = int_stage[i - 1].int_out;
+            assign valid_in = int_stage[i - 1].valid_out;
+        end
         wire signed [odw_cur - 1 : 0] int_out;
+        wire valid_out;
         
         if (VAR_RATE) begin
             localparam PIPELINE_STAGES = 3;
@@ -166,7 +172,7 @@ generate
                             data_buf[0] <= !reset_n ? 0 : (int_in << current_scaling_factor);
                         else
                             data_buf[0] <= !reset_n ? 0 : int_in;
-                        valid_buf[0] <= !reset_n ? 0 : s_axis_in_tvalid;
+                        valid_buf[0] <= !reset_n ? 0 : valid_in;
                     end
                     else begin
                         data_buf[j]  <= !reset_n ? 0 : data_buf[j-1];
@@ -183,7 +189,8 @@ generate
                 .reset_n        (reset_n),
                 .inp_samp_data  (data_buf[PIPELINE_STAGES-1]),
                 .inp_samp_str   (valid_buf[PIPELINE_STAGES-1]),
-                .out_samp_data  (int_out)
+                .out_samp_data  (int_out),
+                .out_samp_str   (valid_out)
                 );            
         end
         else begin        
@@ -196,7 +203,8 @@ generate
                 .reset_n        (reset_n),
                 .inp_samp_data  (int_in),
                 .inp_samp_str   (s_axis_in_tvalid),
-                .out_samp_data  (int_out)
+                .out_samp_data  (int_out),
+                .out_samp_str   (valid_out)
                 );
         end       
         initial begin
