@@ -10,7 +10,7 @@ def binom(n, k):
 
 # this function is not needed for the model
 # TODO: outsource it to a separate file
-def calculate_register_pruning(R, N, M, INP_DW, OUT_DW):
+def calculate_register_pruning(R, N, M, INP_DW, OUT_DW, clip_Bj=True):
     # calculate register pruning as described in Hogenauer, 1981
     CIC_Filter_Gain = (R*M)**N        
     Num_of_Bits_Growth = np.ceil(math.log2(CIC_Filter_Gain))
@@ -35,7 +35,8 @@ def calculate_register_pruning(R, N, M, INP_DW, OUT_DW):
     sigma = np.sqrt((2**Num_of_Output_Bits_Truncated)**2/12)
 
     B_j = np.floor(-np.log2(F_j) + np.log2(sigma) + 0.5*math.log2(6/N));      
-    B_j = np.clip(B_j, 0, None)
+    if clip_Bj:
+        B_j = np.clip(B_j, 0, None)
     out_bits = B_max - B_j
 
     # last items need some special treatment

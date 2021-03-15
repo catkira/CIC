@@ -20,10 +20,10 @@ class Model:
         self.data_in_buf = 0
         
         if VAR_RATE:
-            self.extra_delay   = 1 + (self.N-1)*1     
+            self.extra_delay   = self.N     
             self.extra_delay_2 = 4 + (self.N-1)*1 
         else:
-            self.extra_delay   = 1 + (self.N-1)             
+            self.extra_delay   = self.N            
             self.extra_delay_2 = 4 + (self.N-1)*1 
             
         self.data_out_buf = np.zeros(self.extra_delay+1)
