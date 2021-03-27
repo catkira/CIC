@@ -1,0 +1,8 @@
+
+`verilator_config
+lint_off -rule PINCONNECTEMPTY
+
+lint_off -rule WIDTH -file "*/hdl/dds.sv" -match "*'USE_TAYLOR'*"
+lint_off -rule WIDTH -file "*/hdl/dds.sv" -match "*'SIN_COS'*"
+lint_off -rule WIDTH -file "*/hdl/dds.sv" -match "*'PHASE_FACTOR'*"
+
