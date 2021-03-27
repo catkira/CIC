@@ -113,5 +113,8 @@ class Model:
             return int(self.cic_model_stage_get_out(self.N - 1) / self.CIC_Filter_Gain)*(2**(self.OUT_DW-self.INP_DW));
             #return int(self.cic_model_stage_get_out(self.N - 1)) >> int(self.Num_Output_Bits_Without_Truncation - self.OUT_DW)
         else:
-            return int(self.cic_model_stage_get_out(self.N - 1)) >> int(self.Num_Output_Bits_Without_Truncation - self.OUT_DW)
+            num_shift = self.Num_Output_Bits_Without_Truncation - self.OUT_DW
+            if num_shift < 0:
+                num_shift = 0
+            return int(self.cic_model_stage_get_out(self.N - 1)) >> int(num_shift)
         
