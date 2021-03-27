@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 N = 6
 M = 1
 INP_DW = 16
-fig = plt.figure()
+fig = plt.figure(figsize=(16,9))
 axs = []
 axs.append(plt.subplot(3,2,1))
 axs.append(plt.subplot(3,2,3, sharex = axs[0]))
