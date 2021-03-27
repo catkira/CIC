@@ -375,8 +375,8 @@ assign m_axis_out_tvalid     = out_valid_buf[OUT_PIPELINE_STAGES-1];
 
 `ifdef COCOTB_SIM
 initial begin
-  $dumpfile ("cic_d.vcd");
-  $dumpvars (0, cic_d);
+  //$dumpfile ("cic_d.vcd");
+  //$dumpvars (0, cic_d);
   //#1;
 end
 `endif
