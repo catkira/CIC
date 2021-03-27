@@ -47,7 +47,8 @@ class TB(object):
         self.log = logging.getLogger("cocotb.tb")
         self.log.setLevel(logging.DEBUG)        
         
-        self.f_mhz = 18.000
+        self.f_mhz = 2
+        self.f_mhz_alias = 7
         self.f_clk = 122.88E6
 
         self.input = []
@@ -67,19 +68,27 @@ class TB(object):
             self.model.tick()
             await timer
 
-    async def generate_input(self):
+    async def generate_input(self, num_items):
         phase = 0
-        freq = self.f_mhz*1E6 / CLK_PERIOD_S / self.f_clk
-        phase_step = CLK_PERIOD_S * 2 * freq * math.pi
-        print(F"normalized freq = {CLK_PERIOD_S*freq:.12f} Hz")
+        if True:
+        
+            freq = self.f_mhz*1E6 / CLK_PERIOD_S / self.f_clk
+            phase_step = CLK_PERIOD_S * 2 * freq * math.pi
+            print(F"normalized freq = {CLK_PERIOD_S*freq:.12f} Hz")
+            phases = np.arange(0,phase_step*num_items, phase_step)
+            #noise = (np.random.random_sample(len(phases)) - 0.5) * 1E-8
+            noise = 0
+            values = np.round((0.5*np.sin(phases) + 0.5*np.sin(phases*self.f_mhz_alias/self.f_mhz) + noise)*(2**(self.INP_DW-1)-1))
+        if False:
+            t = np.arange(0, num_items)
+            freq = self.f_mhz*1E6 / self.f_clk
+            values = np.round(signal.chirp(t=t, f0 = freq/1.1 , f1 = freq, t1 = t[-1])*(2**(self.INP_DW-1)-1))
         self.input = []
-        while True:
-            phase += phase_step
-            value = int(np.round(math.sin(phase)*(2**(self.INP_DW-1)-1)))
+        for value in values:
             await RisingEdge(self.dut.clk)
-            self.model.set_data(value) 
-            self.input.append(value)
-            self.dut.s_axis_in_tdata <= value
+            self.model.set_data(int(value)) 
+            self.input.append(int(value))
+            self.dut.s_axis_in_tdata <= int(value)
             self.dut.s_axis_in_tvalid <= 1
 
     async def cycle_reset(self):
@@ -115,7 +124,7 @@ class TB(object):
         mult_number = 0;
         if True:
             # exact floating-point calculation
-            gain_factor_log2 = self.N * np.log2( 2**np.ceil(np.log2(self.initial_R)) / self.R )
+            gain_factor_log2 = self.N * np.log2( 2**np.ceil(np.log2(self.initial_R)) / self.R ) 
             shift_number = int(gain_factor_log2) # rounded down
             mult_number = int(2**(gain_factor_log2 - shift_number) * 2**self.NUM_SHIFT) 
         if False:
@@ -141,7 +150,7 @@ class TB(object):
 @cocotb.test()
 async def programmable_scaling_test(dut):
     tb = TB(dut)
-    rate_list = [3]
+    rate_list = [15]
     if tb.VAR_RATE == 0:
         rate_list = [tb.R]
     for rate in rate_list:
@@ -154,7 +163,7 @@ async def programmable_scaling_test(dut):
         num_items = 1E4 
         output = []
         output_model = []
-        gen = cocotb.fork(tb.generate_input())
+        gen = cocotb.fork(tb.generate_input(num_items * rate + 1000))
         tolerance = 1
         if tb.EXACT_SCALING:
             # exact scaling needs a bit more tolerance because of rounding errors
@@ -192,21 +201,32 @@ async def programmable_scaling_test(dut):
             plt.title(F"CIC output\nf_clk = {tb.f_clk*1E-6} MHz, f_signal = {tb.f_mhz} Mhz, n = {num_items}, window = {window_text}")
             plt.plot(range(len(output)),output)
             #plt.plot(range(len(output_model)),output_model)
-            fig2 = plt.figure()
-            plt.title(F"Two-sided Spectrum of CIC output\nf_clk = {tb.f_clk*1E-6} MHz, f_signal = {tb.f_mhz} Mhz, n = {num_items}, window = {window_text}")
             output_float = np.array(output) / (2**(tb.OUT_DW-1)-1)
             S = np.fft.fftshift(np.fft.fft(output_float))
+            decimated_input = signal.decimate(np.array(tb.input) / (2**(tb.INP_DW-1)-1), tb.R, ftype = 'fir')
+            if use_window:
+                window = signal.hann(len(decimated_input))            
+                decimated_input *= window
+                decimated_input /= sum(window)/len(decimated_input)
+            S_ideal = np.fft.fftshift(np.fft.fft(decimated_input))
             freq = np.fft.fftshift(np.fft.fftfreq(n=len(output_float), d=1/tb.f_clk*tb.R))
+            freq_ideal = np.fft.fftshift(np.fft.fftfreq(n=len(decimated_input), d=1/tb.f_clk*tb.R))
             tiny_offset = 0
             ydata = dB20(np.abs(S+tiny_offset)/(len(output_float)))
-            plt.plot(freq,ydata)
-            plt.ylim(np.maximum(-200,ydata.min()), ydata.max()+10)        
+            ydata_ideal = dB20(np.abs(S_ideal+tiny_offset)/(len(decimated_input)))
+            if False:
+                fig2 = plt.figure()
+                plt.title(F"Two-sided Spectrum of CIC output\nf_clk = {tb.f_clk*1E-6} MHz, f_signal = {tb.f_mhz} Mhz, n = {num_items}, window = {window_text}")
+                plt.plot(freq,ydata)
+                plt.ylim(np.maximum(-200,ydata.min()), 5)        
             fig3 = plt.figure()
             plt.title(F"Power Spectrum of CIC output\nf_clk = {tb.f_clk*1E-6} MHz, f_signal = {tb.f_mhz} Mhz, n = {num_items}, window = {window_text}")
             ydata_onesided = ydata[int(len(ydata)/2):] + 6
             ydata_onesided[0] -= 6
-            plt.plot(freq[int(len(ydata)/2):],ydata_onesided)
-            plt.ylim(np.maximum(-200,ydata_onesided.min()), ydata_onesided.max()+10)        
+            ydata_ideal_onesided = ydata_ideal[int(len(ydata_ideal)/2):] + 6
+            ydata_ideal_onesided[0] -= 6
+            plt.plot(freq[int(len(ydata)/2):],ydata_onesided,freq_ideal[int(len(ydata_ideal)/2):],ydata_ideal_onesided, alpha=0.7)
+            plt.ylim(np.maximum(-200,ydata_onesided.min()), 5)        
             plt.xlabel("Hz")
             plt.ylabel("Normalized Power in dB")
             plt.show()        
