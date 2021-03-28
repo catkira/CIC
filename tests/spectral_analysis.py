@@ -36,7 +36,7 @@ def PSD(s,window='boxcar',fs=1,scaling='psd',sides='one'):
     S = np.fft.fftshift(np.fft.fft(s))
     freq = np.fft.fftshift(np.fft.fftfreq(n=len(s), d=1/fs))
     if sides == 'one':
-        S_onesided = np.zeros(int(np.floor((len(s)/2)) + len(s)%2))
+        S_onesided = np.zeros(int(np.floor((len(s)/2)) + len(s)%2)).astype(np.complex64)
         freq_onesided = np.zeros(len(S_onesided))
         if len(s) % 2 == 0:
             S_onesided = S[int(len(S)/2):] * 2
@@ -47,7 +47,7 @@ def PSD(s,window='boxcar',fs=1,scaling='psd',sides='one'):
             freq_onesided = freq[int((len(S)-1)/2) + 1:]            
         S = S_onesided
         freq = freq_onesided
-    PS = (S/len(s))**2
+    PS = (np.abs(S)/len(s))**2
     if scaling == 'ps':  # units V^2
         S = PS
     elif scaling == 'psd':  # unit V^2/Hz
@@ -75,9 +75,9 @@ class TB(object):
         self.log = logging.getLogger("cocotb.tb")
         self.log.setLevel(logging.DEBUG)        
         
-        self.f_mhz = 2
-        self.f_mhz_alias = 7
-        self.f_clk = 122.88E6
+        self.f_mhz = 2.001
+        self.f_mhz_alias = 7.501
+        self.f_clk = 100E6
 
         self.input = []
 
@@ -99,14 +99,18 @@ class TB(object):
     async def generate_input(self, num_items):
         phase = 0
         if True:
-        
             freq = self.f_mhz*1E6 / CLK_PERIOD_S / self.f_clk
-            phase_step = CLK_PERIOD_S * 2 * freq * math.pi
+            phase_step = CLK_PERIOD_S * 2 * freq * np.pi
             print(F"normalized freq = {CLK_PERIOD_S*freq:.12f} Hz")
             phases = np.arange(0,phase_step*num_items, phase_step)
-            #noise = (np.random.random_sample(len(phases)) - 0.5) * 1E-8
-            noise = 0
-            values = np.round((0.5*np.sin(phases) + 0.5*np.sin(phases*self.f_mhz_alias/self.f_mhz) + noise)*(2**(self.INP_DW-1)-1))
+            freq2 = self.f_mhz_alias*1E6 / CLK_PERIOD_S / self.f_clk
+            phase_step2 = CLK_PERIOD_S * 2 * freq2 * np.pi
+            print(F"normalized freq2 = {CLK_PERIOD_S*freq2:.12f} Hz")
+            phases2 = np.arange(0,phase_step2*num_items, phase_step2)
+            noise_amplitude = 1E-6
+            signal_amplitude = 0.45 # has to be chosen such that no overflow with INP_DW bits occurs
+            noise = (np.random.random_sample(len(phases)) - 0.5) * 2 * noise_amplitude
+            values = np.round((signal_amplitude*np.sin(phases) + signal_amplitude*np.sin(phases2) + noise)*(2**(self.INP_DW-1)-1))
         if False:
             t = np.arange(0, num_items)
             freq = self.f_mhz*1E6 / self.f_clk
@@ -221,20 +225,34 @@ async def programmable_scaling_test(dut):
             fig1 = plt.figure()
             plt.title(F"CIC output\nf_clk = {tb.f_clk*1E-6} MHz, f_signal = {tb.f_mhz} Mhz, n = {num_items}")
             plt.plot(range(len(output)),output)
-
             window_text = "hann"
             scaling = 'ps'
-            fig2 = plt.figure()
-            plt.title(F"Power Spectrum of CIC output\nf_clk = {tb.f_clk*1E-6} MHz, n = {num_items}, window = {window_text}")
+            
+            if True:
+                fig1 = plt.figure()
+                plt.title(F"Power Spectrum of input\nf_clk = {tb.f_clk*1E-6} MHz, n = {num_items}, window = {window_text}")
+                (PSD_input, freq) = PSD(np.array(tb.input) / (2**(tb.INP_DW-1)-1) , window=window_text,fs=tb.f_clk,sides='one',scaling=scaling)
+                PSD_input = dB10(PSD_input)
+                plt.plot(freq*1E-6, PSD_input, alpha=0.7)
+                plt.ylim(np.maximum(-200,PSD_input.min()), 5)        
+                plt.xlabel("MHz")
+                plt.ylabel("Normalized Power [dBV]")
+
+            fig3 = plt.figure()
+            plt.title(F"Power Spectrum of output\nf_clk = {tb.f_clk*1E-6} MHz, n = {num_items}, window = {window_text}")
             output_normalized = np.array(output) / (2**(tb.OUT_DW-1)-1)
-            fir_decimated_normalized = signal.decimate(np.array(tb.input) / (2**(tb.INP_DW-1)-1), tb.R, ftype = 'iir')
+            if False:
+                ftype = signal.dlti(signal.firwin(200 * tb.R + 1, 1. / tb.R, window='hamming'),[1])
+            if True:
+                ftype = 'iir'
+            fir_decimated_normalized = signal.decimate(np.array(tb.input) / (2**(tb.INP_DW-1)-1), tb.R, ftype = ftype)
             (ydata_onesided, freq)             = PSD(output_normalized, window=window_text,fs=tb.f_clk/tb.R,sides='one',scaling=scaling)
             (ydata_ideal_onesided, freq_ideal) = PSD(fir_decimated_normalized, window=window_text,fs=tb.f_clk/tb.R,sides='one',scaling=scaling)
             ydata_onesided = dB10(ydata_onesided)
             ydata_ideal_onesided = dB10(ydata_ideal_onesided)
-            plt.plot(freq, ydata_onesided, freq_ideal,ydata_ideal_onesided, alpha=0.7)
+            plt.plot(freq*1E-6, ydata_onesided, freq_ideal*1E-6,ydata_ideal_onesided, alpha=0.7)
             plt.ylim(np.maximum(-200,ydata_onesided.min()), 5)        
-            plt.xlabel("Hz")
+            plt.xlabel("MHz")
             plt.ylabel("Normalized Power [dBV]")
             plt.show()        
         for i in range(num_items):
