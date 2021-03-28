@@ -28,6 +28,34 @@ def dB20(array):
 def dB10(array):
     with np.errstate(divide='ignore'):
         return 10 * np.log10(array)    
+        
+def PSD(s,window='boxcar',fs=1,scaling='psd',sides='one'):
+    w = signal.get_window(window,len(s))
+    s *= w
+    s /= sum(w)/len(s)
+    S = np.fft.fftshift(np.fft.fft(s))
+    freq = np.fft.fftshift(np.fft.fftfreq(n=len(s), d=1/fs))
+    if sides == 'one':
+        S_onesided = np.zeros(int(np.floor((len(s)/2)) + len(s)%2))
+        freq_onesided = np.zeros(len(S_onesided))
+        if len(s) % 2 == 0:
+            S_onesided = S[int(len(S)/2):] * 2
+            freq_onesided = freq[int(len(S)/2):]
+        else:
+            S_onesided[0] = S[int((len(S) - 1)/2)]
+            S_onesided = S[int((len(S) - 1)/2) + 1:] * 2
+            freq_onesided = freq[int((len(S)-1)/2) + 1:]            
+        S = S_onesided
+        freq = freq_onesided
+    PS = (S/len(s))**2
+    if scaling == 'ps':  # units V^2
+        S = PS
+    elif scaling == 'psd':  # unit V^2/Hz
+        df = fs/N
+        S *= PS/df
+    else:
+        assert False, "unknown scaling " + scaling
+    return (S, freq)
 
 class TB(object):
     def __init__(self,dut):
@@ -160,7 +188,7 @@ async def programmable_scaling_test(dut):
             await tb.set_rate(rate)
         
         await tb.programm_scaling_parameters()
-        num_items = 1E4 
+        num_items = int(1E4)
         output = []
         output_model = []
         gen = cocotb.fork(tb.generate_input(num_items * rate + 1000))
@@ -190,45 +218,24 @@ async def programmable_scaling_test(dut):
         gen.kill()
         tb.dut.s_axis_in_tvalid <= 0
         if True:
-            use_window = True
-            window_text = "none"
-            if use_window:
-                window = signal.hann(len(output))
-                window_text = "hann"
-                output *= window
-                output /= sum(window)/len(output)
             fig1 = plt.figure()
-            plt.title(F"CIC output\nf_clk = {tb.f_clk*1E-6} MHz, f_signal = {tb.f_mhz} Mhz, n = {num_items}, window = {window_text}")
+            plt.title(F"CIC output\nf_clk = {tb.f_clk*1E-6} MHz, f_signal = {tb.f_mhz} Mhz, n = {num_items}")
             plt.plot(range(len(output)),output)
-            #plt.plot(range(len(output_model)),output_model)
-            output_float = np.array(output) / (2**(tb.OUT_DW-1)-1)
-            S = np.fft.fftshift(np.fft.fft(output_float))
-            decimated_input = signal.decimate(np.array(tb.input) / (2**(tb.INP_DW-1)-1), tb.R, ftype = 'fir')
-            if use_window:
-                window = signal.hann(len(decimated_input))            
-                decimated_input *= window
-                decimated_input /= sum(window)/len(decimated_input)
-            S_ideal = np.fft.fftshift(np.fft.fft(decimated_input))
-            freq = np.fft.fftshift(np.fft.fftfreq(n=len(output_float), d=1/tb.f_clk*tb.R))
-            freq_ideal = np.fft.fftshift(np.fft.fftfreq(n=len(decimated_input), d=1/tb.f_clk*tb.R))
-            tiny_offset = 0
-            ydata = dB20(np.abs(S+tiny_offset)/(len(output_float)))
-            ydata_ideal = dB20(np.abs(S_ideal+tiny_offset)/(len(decimated_input)))
-            if False:
-                fig2 = plt.figure()
-                plt.title(F"Two-sided Spectrum of CIC output\nf_clk = {tb.f_clk*1E-6} MHz, f_signal = {tb.f_mhz} Mhz, n = {num_items}, window = {window_text}")
-                plt.plot(freq,ydata)
-                plt.ylim(np.maximum(-200,ydata.min()), 5)        
-            fig3 = plt.figure()
-            plt.title(F"Power Spectrum of CIC output\nf_clk = {tb.f_clk*1E-6} MHz, f_signal = {tb.f_mhz} Mhz, n = {num_items}, window = {window_text}")
-            ydata_onesided = ydata[int(len(ydata)/2):] + 6
-            ydata_onesided[0] -= 6
-            ydata_ideal_onesided = ydata_ideal[int(len(ydata_ideal)/2):] + 6
-            ydata_ideal_onesided[0] -= 6
-            plt.plot(freq[int(len(ydata)/2):],ydata_onesided,freq_ideal[int(len(ydata_ideal)/2):],ydata_ideal_onesided, alpha=0.7)
+
+            window_text = "hann"
+            scaling = 'ps'
+            fig2 = plt.figure()
+            plt.title(F"Power Spectrum of CIC output\nf_clk = {tb.f_clk*1E-6} MHz, n = {num_items}, window = {window_text}")
+            output_normalized = np.array(output) / (2**(tb.OUT_DW-1)-1)
+            fir_decimated_normalized = signal.decimate(np.array(tb.input) / (2**(tb.INP_DW-1)-1), tb.R, ftype = 'iir')
+            (ydata_onesided, freq)             = PSD(output_normalized, window=window_text,fs=tb.f_clk/tb.R,sides='one',scaling=scaling)
+            (ydata_ideal_onesided, freq_ideal) = PSD(fir_decimated_normalized, window=window_text,fs=tb.f_clk/tb.R,sides='one',scaling=scaling)
+            ydata_onesided = dB10(ydata_onesided)
+            ydata_ideal_onesided = dB10(ydata_ideal_onesided)
+            plt.plot(freq, ydata_onesided, freq_ideal,ydata_ideal_onesided, alpha=0.7)
             plt.ylim(np.maximum(-200,ydata_onesided.min()), 5)        
             plt.xlabel("Hz")
-            plt.ylabel("Normalized Power in dB")
+            plt.ylabel("Normalized Power [dBV]")
             plt.show()        
         for i in range(num_items):
             if tb.EXACT_SCALING:
