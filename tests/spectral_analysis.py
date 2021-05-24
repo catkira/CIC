@@ -75,8 +75,8 @@ class TB(object):
         self.log = logging.getLogger("cocotb.tb")
         self.log.setLevel(logging.DEBUG)        
         
-        self.f_mhz = 2.001
-        self.f_mhz_alias = 7.501
+        self.f_mhz = 2
+        self.f_mhz_alias = 9
         self.f_clk = 100E6
 
         self.input = []
@@ -108,7 +108,7 @@ class TB(object):
             print(F"normalized freq2 = {CLK_PERIOD_S*freq2:.12f} Hz")
             phases2 = np.arange(0,phase_step2*num_items, phase_step2)
             noise_amplitude = 1E-6
-            signal_amplitude = 0.45 # has to be chosen such that no overflow with INP_DW bits occurs
+            signal_amplitude = (1 - noise_amplitude)/2 # has to be chosen such that no overflow with INP_DW bits occurs
             noise = (np.random.random_sample(len(phases)) - 0.5) * 2 * noise_amplitude
             values = np.round((signal_amplitude*np.sin(phases) + signal_amplitude*np.sin(phases2) + noise)*(2**(self.INP_DW-1)-1))
         if False:
@@ -182,7 +182,7 @@ class TB(object):
 @cocotb.test()
 async def programmable_scaling_test(dut):
     tb = TB(dut)
-    rate_list = [15]
+    rate_list = [10]
     if tb.VAR_RATE == 0:
         rate_list = [tb.R]
     for rate in rate_list:
@@ -242,10 +242,12 @@ async def programmable_scaling_test(dut):
             plt.title(F"Power Spectrum of output\nf_clk = {tb.f_clk*1E-6} MHz, n = {num_items}, window = {window_text}")
             output_normalized = np.array(output) / (2**(tb.OUT_DW-1)-1)
             if False:
-                ftype = signal.dlti(signal.firwin(200 * tb.R + 1, 1. / tb.R, window='hamming'),[1])
+                filter_length = 201
+                ftype = signal.dlti(signal.firwin(fir_length, 1. / tb.R, window='hamming'),[1])
             if True:
+                filter_length = 8
                 ftype = 'iir'
-            fir_decimated_normalized = signal.decimate(np.array(tb.input) / (2**(tb.INP_DW-1)-1), tb.R, ftype = ftype)
+            fir_decimated_normalized = signal.decimate(np.array(tb.input) / (2**(tb.INP_DW-1)-1), tb.R, ftype = ftype, n=filter_length)
             (ydata_onesided, freq)             = PSD(output_normalized, window=window_text,fs=tb.f_clk/tb.R,sides='one',scaling=scaling)
             (ydata_ideal_onesided, freq_ideal) = PSD(fir_decimated_normalized, window=window_text,fs=tb.f_clk/tb.R,sides='one',scaling=scaling)
             ydata_onesided = dB10(ydata_onesided)
