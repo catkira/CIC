@@ -1,6 +1,3 @@
-from fixedpoint import FixedPoint
-from bitstring import BitArray
-
 import math
 import numpy as np
 

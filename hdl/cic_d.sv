@@ -184,7 +184,8 @@ generate
             end   
             integrator #(
                 idw_cur,
-                odw_cur
+                odw_cur,
+                USE_DSP
                 )
                 int_inst(
                 .clk            (clk),
@@ -192,14 +193,14 @@ generate
                 .inp_samp_data  (data_buf[PIPELINE_STAGES-1]),
                 .inp_samp_str   (valid_buf[PIPELINE_STAGES-1]),
                 .out_samp_data  (int_out),
-                .out_samp_str   (valid_out),
-                .USE_DSP        (USE_DSP)
+                .out_samp_str   (valid_out)
                 );            
         end
         else begin        
             integrator #(
                 idw_cur,
-                odw_cur
+                odw_cur,
+                USE_DSP
                 )
                 int_inst(
                 .clk            (clk),
@@ -207,8 +208,7 @@ generate
                 .inp_samp_data  (int_in),
                 .inp_samp_str   (valid_in),
                 .out_samp_data  (int_out),
-                .out_samp_str   (valid_out),
-                .USE_DSP        (USE_DSP)                
+                .out_samp_str   (valid_out)              
                 );
         end       
         initial begin
@@ -300,7 +300,8 @@ generate
         
         comb #(
                 .SAMP_WIDTH     (idw_cur),
-                .CIC_M          (CIC_M)
+                .CIC_M          (CIC_M),
+                .USE_DSP        (USE_DSP)
             )
             comb_inst(
                 .clk            (clk),
@@ -308,8 +309,7 @@ generate
                 .samp_inp_str   (comb_in_str),
                 .samp_inp_data  (comb_in),
                 .samp_out_str   (comb_dv),
-                .samp_out_data  (comb_inst_out),
-                .USE_DSP        (USE_DSP)                
+                .samp_out_data  (comb_inst_out)
                 );
         wire comb_dv;
         assign comb_chain_out_str = comb_stage[CIC_N - 1].comb_dv;  // use buffered inp_str 
