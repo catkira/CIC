@@ -2,7 +2,6 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import Timer
 from cocotb.triggers import RisingEdge, ReadOnly
-from fixedpoint import FixedPoint
 from collections import deque
 
 import random
