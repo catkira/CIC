@@ -17,20 +17,24 @@ module integrator
 );
 /*********************************************************************************************/
 localparam SUMMER_WIDTH = DATA_WIDTH_INP > DATA_WIDTH_OUT ? DATA_WIDTH_INP : DATA_WIDTH_OUT;
-reg     signed  [SUMMER_WIDTH - 1:0]    acc_reg;
+if (USE_DSP) begin : genblk1
+    (* use_dsp = "yes" *)   reg     signed  [SUMMER_WIDTH - 1:0]    acc_reg;
+end else begin : genblk1
+                            reg     signed  [SUMMER_WIDTH - 1:0]    acc_reg;
+end
+                            
 always_ff @(posedge clk)
 begin
     if (!reset_n) begin
-        acc_reg <= 0;
+        genblk1.acc_reg <= 0;
         out_samp_str <= 0;
     end 
     else begin
-        if (USE_DSP)    (* use_dsp = "yes" *) acc_reg <= inp_samp_str ? acc_reg + inp_samp_data : acc_reg;
-        else            acc_reg <= inp_samp_str ? acc_reg + inp_samp_data : acc_reg;        
+        genblk1.acc_reg <= inp_samp_str ? genblk1.acc_reg + inp_samp_data : genblk1.acc_reg;
         out_samp_str <= inp_samp_str;
     end
 end
 
-assign out_samp_data = acc_reg[SUMMER_WIDTH - 1 -: DATA_WIDTH_OUT];
+assign out_samp_data = genblk1.acc_reg[SUMMER_WIDTH - 1 -: DATA_WIDTH_OUT];
 /*********************************************************************************************/
 endmodule

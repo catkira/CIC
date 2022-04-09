@@ -31,17 +31,20 @@ wire                                            data_reg_push_str;              
 
 
 reg             samp_out_str_reg;
-reg signed      [SAMP_WIDTH - 1 : 0]    data_out_reg;
+if (USE_DSP) begin : genblk1
+    (* use_dsp = "yes" *) reg signed      [SAMP_WIDTH - 1 : 0]    data_out_reg;
+end else begin : genblk1
+    reg signed      [SAMP_WIDTH - 1 : 0]    data_out_reg;
+end
+
 assign data_reg_push_str = samp_inp_str;
 always @(posedge clk)
 begin
-    if (!reset_n)           data_out_reg <= '0;
-    else if (samp_inp_str)  
-        if (USE_DSP)        (* use_dsp = "yes" *) data_out_reg <= samp_inp_data - data_reg[CIC_M - 1];
-        else                data_out_reg <= samp_inp_data - data_reg[CIC_M - 1];
+    if (!reset_n)           genblk1.data_out_reg <= '0;
+    else if (samp_inp_str)  genblk1.data_out_reg <= samp_inp_data - data_reg[CIC_M - 1];
 end
 
-assign samp_out_data = data_out_reg;
+assign samp_out_data = genblk1.data_out_reg;
 always @(posedge clk)
 begin
     if (!reset_n)           samp_out_str_reg <= '0;
