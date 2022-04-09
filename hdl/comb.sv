@@ -11,7 +11,8 @@ module comb
 /*********************************************************************************************/
 #(
     parameter       SAMP_WIDTH = 8,
-    parameter       CIC_M = 1
+    parameter       CIC_M = 1,
+    parameter       USE_DSP = 1
 )
 /*********************************************************************************************/
 (
@@ -35,7 +36,9 @@ assign data_reg_push_str = samp_inp_str;
 always @(posedge clk)
 begin
     if (!reset_n)           data_out_reg <= '0;
-    else if (samp_inp_str)  data_out_reg <= samp_inp_data - data_reg[CIC_M - 1];
+    else if (samp_inp_str)  
+        if (USE_DSP)        (* use_dsp = "yes" *) data_out_reg <= samp_inp_data - data_reg[CIC_M - 1];
+        else                data_out_reg <= samp_inp_data - data_reg[CIC_M - 1];
 end
 
 assign samp_out_data = data_out_reg;

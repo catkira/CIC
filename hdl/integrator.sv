@@ -1,7 +1,11 @@
 `timescale 1ns / 1ns
 module integrator
 /*********************************************************************************************/
-#(parameter DATA_WIDTH_INP = 8 , DATA_WIDTH_OUT = 9)
+#(
+    parameter DATA_WIDTH_INP = 8,
+    parameter DATA_WIDTH_OUT = 9,
+    parameter USE_DSP = 1
+    )
 /*********************************************************************************************/
 (
     input                                       clk,
@@ -21,7 +25,8 @@ begin
         out_samp_str <= 0;
     end 
     else begin
-        acc_reg <= inp_samp_str ? acc_reg + inp_samp_data : acc_reg;
+        if (USE_DSP)    (* use_dsp = "yes" *) acc_reg <= inp_samp_str ? acc_reg + inp_samp_data : acc_reg;
+        else            acc_reg <= inp_samp_str ? acc_reg + inp_samp_data : acc_reg;        
         out_samp_str <= inp_samp_str;
     end
 end
