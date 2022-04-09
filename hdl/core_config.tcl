@@ -15,6 +15,7 @@ core_parameter PRUNE_BITS      {PRUNE_BITS} {precalculated prune bits, set zero 
 core_parameter VAR_RATE   {VAR_RATE} {one if variable rate is used, zero otherwise}
 core_parameter EXACT_SCALING   {EXACT_SCALING} {one if fine scaling after CIC is wanted}
 core_parameter PRG_SCALING   {PRG_SCALING} {one if programmable scaling parameters are used}
+core_parameter USE_DSP   {USE_DSP} {use DSP slices on Xilinx FPGAs}
 
 set bus [ipx::get_bus_interfaces -of_objects $core s_axis_in]
 set_property NAME S_AXIS_IN $bus
