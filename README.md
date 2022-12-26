@@ -1,3 +1,5 @@
+[![Verify](https://github.com/catkira/CIC/actions/workflows/verify.yml/badge.svg)](https://github.com/catkira/CIC/actions/workflows/verify.yml)
+
 # CIC Decimator
 ## Overview
 This project is based on https://opencores.org/projects/cic_core_2 by Egor Ibragimov and on https://opencores.org/projects/cic_core by Vadim Kotelnikov.
