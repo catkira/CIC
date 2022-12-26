@@ -1,0 +1,6 @@
+cocotb
+cocotb_test
+numpy
+py
+pytest
+pytest-parallel
