@@ -45,13 +45,10 @@ Convergent rounding like round-half-to-even can also be implemented using the CA
 The Xilinx CIC core does not specify how it performs rounding. The datasheet of the HSP43220 says that it uses symmetric rounding, but not which method exactly.
 
 ## Verification
-To run the unit tests install
-- python >= 3.8
-- iverilog >= 12
-- python modules: cocotb, cocotb_test, pytest, pytest-parallel, pytest-cov
-
-and run pytest in the repo directory
+To run the unit tests install python >= 3.8 and iverilog >= 10.
+Then run pytest in the repo directory like this:
 ```
+pip install -r requirements.txt
 pytest -v --workers 10
 ```
 
