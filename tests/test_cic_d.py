@@ -1,22 +1,20 @@
-import cocotb
-from cocotb.clock import Clock
-from cocotb.triggers import Timer
-from cocotb.triggers import RisingEdge, ReadOnly
-from collections import deque
-
 import random
-import warnings
 import os
 import logging
 import cocotb_test.simulator
 import pytest
 import math
 import numpy as np
-
 import importlib.util
+
+import cocotb
+from cocotb.clock import Clock
+from cocotb.triggers import Timer
+from cocotb.triggers import RisingEdge
 
 CLK_PERIOD_NS = 8
 CLK_PERIOD_S = CLK_PERIOD_NS * 0.000000001
+
 
 class TB(object):
     def __init__(self,dut):
@@ -45,7 +43,7 @@ class TB(object):
         spec.loader.exec_module(foo)
         self.model = foo.Model(self.R, self.N, self.M, self.INP_DW, self.OUT_DW, self.VAR_RATE, self.EXACT_SCALING) 
         cocotb.fork(Clock(self.dut.clk, CLK_PERIOD_NS, units='ns').start())
-        cocotb.fork(self.model_clk(CLK_PERIOD_NS, 'ns'))    
+        cocotb.fork(self.model_clk(CLK_PERIOD_NS, 'ns'))
           
     async def model_clk(self, period, period_units):
         timer = Timer(period, period_units)
@@ -63,19 +61,19 @@ class TB(object):
             phase += phase_step
             value = int(np.round(math.sin(phase)*(2**(self.INP_DW-1)-1)))
             await RisingEdge(self.dut.clk)
-            self.model.set_data(value) 
+            self.model.set_data(value)
             self.input.append(value)
-            self.dut.s_axis_in_tdata <= value
-            self.dut.s_axis_in_tvalid <= 1
+            self.dut.s_axis_in_tdata = value
+            self.dut.s_axis_in_tvalid = 1
 
     async def cycle_reset(self):
-        self.dut.s_axis_rate_tvalid <= 0
-        self.dut.s_axis_in_tvalid <= 0
+        self.dut.s_axis_rate_tvalid = 0
+        self.dut.s_axis_in_tvalid = 0
         self.dut.reset_n.setimmediatevalue(1)
         await RisingEdge(self.dut.clk)
-        self.dut.reset_n <= 0
+        self.dut.reset_n = 0
         await RisingEdge(self.dut.clk)
-        self.dut.reset_n <= 1
+        self.dut.reset_n = 1
         await RisingEdge(self.dut.clk)
         self.model.reset()
         
@@ -83,12 +81,12 @@ class TB(object):
         print(f"set rate: {rate}")
         self.model.set_rate(rate)
         self.R = rate
-        self.dut.s_axis_in_tvalid <= 0
+        self.dut.s_axis_in_tvalid = 0
         await RisingEdge(self.dut.clk)
-        self.dut.s_axis_rate_tdata <= rate
-        self.dut.s_axis_rate_tvalid <= 1
+        self.dut.s_axis_rate_tdata = rate
+        self.dut.s_axis_rate_tvalid = 1
         await RisingEdge(self.dut.clk)
-        self.dut.s_axis_rate_tvalid <= 0
+        self.dut.s_axis_rate_tvalid = 0
         await RisingEdge(self.dut.clk)
     
 
@@ -97,8 +95,8 @@ class TB(object):
         # set input shift scaling
         assert (self.NUM_SHIFT <= self.RATE_DW-2), F"RATE_DW = {self.RATE_DW} is too small for NUM_SHIFT = {self.NUM_SHIFT}"
         await RisingEdge(self.dut.clk)
-        shift_number = 0;
-        mult_number = 0;
+        shift_number = 0
+        mult_number = 0
         if True:
             # exact floating-point calculation
             gain_factor_log2 = self.N * np.log2( 2**np.ceil(np.log2(self.initial_R)) / self.R )
@@ -112,16 +110,16 @@ class TB(object):
             
         print(F"shift_number = {shift_number}")
         print(F"mult_number = {mult_number}")
-        self.dut.s_axis_rate_tdata <= (1 << (self.RATE_DW-2)) + (shift_number & (2**(self.RATE_DW-2)-1))
-        self.dut.s_axis_rate_tvalid <= 1
+        self.dut.s_axis_rate_tdata = (1 << (self.RATE_DW-2)) + (shift_number & (2**(self.RATE_DW-2)-1))
+        self.dut.s_axis_rate_tvalid = 1
         await RisingEdge(self.dut.clk)
-        self.dut.s_axis_rate_tvalid <= 0
+        self.dut.s_axis_rate_tvalid = 0
         await RisingEdge(self.dut.clk)
         # set output scaling
-        self.dut.s_axis_rate_tdata <= (2 << (self.RATE_DW-2)) + (mult_number & (2**(self.RATE_DW-2)-1))
-        self.dut.s_axis_rate_tvalid <= 1
+        self.dut.s_axis_rate_tdata = (2 << (self.RATE_DW-2)) + (mult_number & (2**(self.RATE_DW-2)-1))
+        self.dut.s_axis_rate_tvalid = 1
         await RisingEdge(self.dut.clk)
-        self.dut.s_axis_rate_tvalid <= 0
+        self.dut.s_axis_rate_tvalid = 0
         
         
 @cocotb.test()
@@ -136,7 +134,7 @@ async def simple_test(dut):
     if tb.EXACT_SCALING:
         # exact scaling needs a bit more tolerance because of rounding errors
         tolerance = 0.005
-    count = 0;
+    count = 0
     max_count = num_items * tb.R * 2;
     max_out_value = (2**(tb.OUT_DW-1)-1)
     while len(output_model) < num_items or len(output) < num_items:
@@ -182,9 +180,9 @@ async def variable_rate_test(dut):
         if tb.EXACT_SCALING:
             # hdl code calculates scaling parameter using fixed point, therefore needs more tolerance
             # it is recommended to use PROGRAMMABLE_SCALING if possible and calculate scaling parameters using floating point
-            tolerance = 0.005    
-        count = 0;
-        max_count = num_items * rate * 2;
+            tolerance = 0.005
+        count = 0
+        max_count = num_items * rate * 2
         max_out_value = (2**(tb.OUT_DW-1)-1)
         while len(output_model) < num_items or len(output) < num_items:
             await RisingEdge(dut.clk)
@@ -201,7 +199,7 @@ async def variable_rate_test(dut):
             #print(f"{int(tb.model.data_valid())} {dut.m_axis_out_tvalid}")
             count += 1
             if count > max_count:
-                assert False, "not enough items received"        
+                assert False, "not enough items received"
         gen.kill()
         tb.dut.s_axis_in_tvalid <= 0
         for i in range(num_items):
@@ -221,7 +219,7 @@ async def programmable_scaling_test(dut):
         await tb.cycle_reset()
         if tb.VAR_RATE:
             await tb.set_rate(rate)
-        
+
         await tb.programm_scaling_parameters()
         num_items = 10
         output = []
@@ -231,8 +229,8 @@ async def programmable_scaling_test(dut):
         if tb.EXACT_SCALING:
             # exact scaling needs a bit more tolerance because of rounding errors
             tolerance = 0.0005    # 0.0005 is enough if fp is used for calculation of the exact scaling factor   
-        count = 0;
-        max_count = num_items * rate * 2;
+        count = 0
+        max_count = num_items * rate * 2
         max_out_value = (2**(tb.OUT_DW-1)-1)
         while len(output_model) < num_items or len(output) < num_items:
             await RisingEdge(dut.clk)
@@ -436,6 +434,6 @@ def test_cic_d_programmable_scaling(request, R, N, M, INP_DW, OUT_DW, RATE_DW, V
         parameters=parameters,
         sim_build=sim_build,
         extra_env=extra_env,
-        testcase="programmable_scaling_test",        
-    )    
-    
+        testcase="programmable_scaling_test",   
+    )
+

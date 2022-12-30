@@ -28,7 +28,7 @@ class Model:
         self.out_valid = np.zeros(self.extra_delay+1)
         self.out_valid_2 = np.zeros(self.extra_delay_2+1)
         self.in_valid = 0
-        self.decimation_counter = 0;
+        self.decimation_counter = 0
 
         self.CIC_Filter_Gain = (self.R*self.M)**self.N        
         Num_of_Bits_Growth = np.ceil(math.log2(self.CIC_Filter_Gain))
@@ -51,7 +51,7 @@ class Model:
         self.in_valid = 1
         
     def reset(self):
-        self.decimation_counter = 0;
+        self.decimation_counter = 0
         self.cic_push_ptr = 0
         self.data_in_buf = 0       
         self.in_valid = 0
@@ -69,8 +69,8 @@ class Model:
         if self.in_valid == 1:
             self.cic_taps[self.cic_push_ptr] = self.data_in_buf
             self.cic_push_ptr = self.cic_push_ptr + 1 if self.cic_push_ptr < self.R*self.M - 1 else 0
-            self.out_valid[0] = 1;
-            self.in_valid = 0;
+            self.out_valid[0] = 1
+            self.in_valid = 0
 
         # propagate data to next stage
         for i_s in np.arange(self.N-1,0,-1):
