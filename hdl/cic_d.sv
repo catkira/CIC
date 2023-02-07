@@ -159,7 +159,7 @@ generate
             assign int_in = int_stage[i - 1].int_out;
             assign valid_in = int_stage[i - 1].valid_out;
         end
-        wire reset_in = reset_n && !s_axis_rate_tvalid;  // reset integrators if rate change happens
+        wire reset_in = VAR_RATE ? reset_n && !s_axis_rate_tvalid : reset_n;  // reset integrators if rate change happens
         wire signed [odw_cur - 1 : 0] int_out;
         wire valid_out;
         
