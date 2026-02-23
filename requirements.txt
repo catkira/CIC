@@ -1,4 +1,4 @@
-cocotb
+cocotb<2
 cocotb_test
 numpy
 py
