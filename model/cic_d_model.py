@@ -107,7 +107,7 @@ class Model:
 
     def get_scaled_data(self):
         if self.EXACT_SCALING:
-            return int(self.cic_model_stage_get_out(self.N - 1) / self.CIC_Filter_Gain)*(2**(self.OUT_DW-self.INP_DW));
+            return int(self.cic_model_stage_get_out(self.N - 1) / self.CIC_Filter_Gain)*(2**(self.OUT_DW-self.INP_DW))
             #return int(self.cic_model_stage_get_out(self.N - 1)) >> int(self.Num_Output_Bits_Without_Truncation - self.OUT_DW)
         else:
             num_shift = self.Num_Output_Bits_Without_Truncation - self.OUT_DW
